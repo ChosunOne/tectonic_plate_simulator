@@ -1,13 +1,21 @@
 use std::collections::HashMap;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::extract_resource::ExtractResource};
 use hexasphere::shapes::IcoSphere;
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct MantleGrid {
     pub sphere: IcoSphere<()>,
     pub cells: Vec<CellData>,
     pub neighbors: Vec<Vec<usize>>,
+}
+
+impl ExtractResource for MantleGrid {
+    type Source = MantleGrid;
+
+    fn extract_resource(source: &Self::Source) -> Self {
+        source.clone()
+    }
 }
 
 impl MantleGrid {
@@ -18,8 +26,9 @@ impl MantleGrid {
         let num_triangles = indices.len() / 3;
         let cells = (0..num_triangles)
             .map(|x| CellData {
-                pressure: 0.0,
+                pressure: x as f32,
                 center: triangle_center(&sphere, x),
+                flux: vec![0.0; 3],
             })
             .collect();
 
@@ -89,7 +98,9 @@ fn triangle_center(sphere: &IcoSphere<()>, triangle_idx: usize) -> Vec3 {
     ((a + b + c) / 3.0).normalize().into()
 }
 
+#[derive(Debug, Clone)]
 pub struct CellData {
     pub center: Vec3,
+    pub flux: Vec<f32>,
     pub pressure: f32,
 }
