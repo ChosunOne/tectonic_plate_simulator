@@ -1,0 +1,20 @@
+[package]
+name = "tectonic_plate_simulator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = {version = "^0.17.2", features = ["dynamic_linking", "exr", "wayland"]}
+log = {version = "*", features = ["max_level_debug", "release_max_level_warn"]}
+bevy_panorbit_camera = "^0.31.0"
+hexasphere = {version = "^16.0.0", features = ["adjacency"]}
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
