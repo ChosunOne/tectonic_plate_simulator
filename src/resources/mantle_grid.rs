@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use bevy::{prelude::*, render::extract_resource::ExtractResource};
+use bevy::{
+    asset::RenderAssetUsages,
+    mesh::{Indices, PrimitiveTopology},
+    prelude::*,
+    render::extract_resource::ExtractResource,
+};
 use hexasphere::shapes::IcoSphere;
 
 #[derive(Resource, Clone)]
@@ -8,6 +13,7 @@ pub struct MantleGrid {
     pub sphere: IcoSphere<()>,
     pub cells: Vec<CellData>,
     pub neighbors: Vec<Vec<usize>>,
+    pub vertex_triangles: Vec<Vec<usize>>,
 }
 
 impl ExtractResource for MantleGrid {
@@ -78,11 +84,44 @@ impl MantleGrid {
             }
         }
 
+        let num_vertices = sphere.raw_points().len();
+        let mut vertex_triangles = vec![Vec::new(); num_vertices];
+        for tri_idx in 0..num_triangles {
+            let base = tri_idx * 3;
+            let v0 = indices[base] as usize;
+            let v1 = indices[base + 1] as usize;
+            let v2 = indices[base + 2] as usize;
+
+            vertex_triangles[v0].push(tri_idx);
+            vertex_triangles[v1].push(tri_idx);
+            vertex_triangles[v2].push(tri_idx);
+        }
+
         Self {
             sphere,
             cells,
             neighbors,
+            vertex_triangles,
         }
+    }
+
+    #[must_use]
+    pub fn mesh(&self) -> Mesh {
+        let points = self.sphere.raw_points();
+        let indices = self.sphere.get_all_indices();
+
+        let positions = points.iter().map(|&p| p.into()).collect::<Vec<[f32; 3]>>();
+        let normals = points
+            .iter()
+            .map(|&p| p.normalize().into())
+            .collect::<Vec<[f32; 3]>>();
+
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::all());
+
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.insert_indices(Indices::U32(indices));
+        mesh
     }
 }
 
