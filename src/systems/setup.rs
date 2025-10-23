@@ -1,17 +1,12 @@
 use bevy::{core_pipeline::Skybox, prelude::*, render::storage::ShaderStorageBuffer};
 use bevy_panorbit_camera::PanOrbitCamera;
 
-use crate::{
-    materials::pressure_material::PressureMaterial,
-    resources::{mantle_grid::MantleGrid, vertex_pressure_buffer::VertexPressureBufferHandle},
-};
+use crate::resources::mantle_grid::MantleGrid;
 
 pub fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut pressure_materials: ResMut<Assets<PressureMaterial>>,
-    mut storage_buffers: ResMut<Assets<ShaderStorageBuffer>>,
     asset_server: Res<AssetServer>,
 ) {
     // Spawn the sphere
@@ -29,16 +24,8 @@ pub fn setup(
     let mut vertex_pressure_buffer_asset = ShaderStorageBuffer::from(vertex_pressure_data);
     vertex_pressure_buffer_asset.buffer_description.usage |=
         bevy::render::render_resource::BufferUsages::STORAGE;
-    let vertex_pressure_buffer = storage_buffers.add(vertex_pressure_buffer_asset);
-    commands.insert_resource(VertexPressureBufferHandle(vertex_pressure_buffer.clone()));
 
-    commands.spawn((
-        Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(pressure_materials.add(PressureMaterial {
-            vertex_pressure: vertex_pressure_buffer,
-        })),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-    ));
+    commands.spawn((Mesh3d(meshes.add(mesh)), Transform::from_xyz(0.0, 0.0, 0.0)));
     commands.insert_resource(grid);
 
     // Spawn the camera
