@@ -1,16 +1,18 @@
+use std::time::Duration;
+
 use bevy::{
     DefaultPlugins,
-    app::{App, Plugin},
+    app::{App, Plugin, ScheduleRunnerPlugin},
     asset::AssetServer,
     ecs::{
         resource::Resource,
-        schedule::{IntoScheduleConfigs, common_conditions::run_once},
+        schedule::IntoScheduleConfigs,
         system::{Commands, Res, ResMut},
         world::World,
     },
     prelude::PluginGroup,
     render::{
-        Render, RenderApp, RenderSystems,
+        Render, RenderApp, RenderPlugin, RenderStartup, RenderSystems,
         render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, RenderLabel},
         render_resource::{
             CachedComputePipelineId, ComputePassDescriptor, ComputePipelineDescriptor,
@@ -62,6 +64,7 @@ impl Node for IncrementNode {
         else {
             return Ok(());
         };
+        let render_device = render_context.render_device().clone();
 
         let mut pass =
             render_context
@@ -74,14 +77,14 @@ impl Node for IncrementNode {
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, bind_group.current(), &[]);
         pass.dispatch_workgroups((BUFFER_SIZE as u32).div_ceil(64), 1, 1);
-        // let render_device = render_context.render_device();
-        // let read_data = test_buffer
-        //     .0
-        //     .read_back_read_buffer(render_device, render_queue);
-        // let write_data = test_buffer
-        //     .0
-        //     .read_back_write_buffer(render_device, render_queue);
-        //
+        let read_data = test_buffer
+            .0
+            .read_back_read_buffer(&render_device, render_queue);
+        let write_data = test_buffer
+            .0
+            .read_back_write_buffer(&render_device, render_queue);
+
+        &dbg!(&write_data);
         // for (&a, &b) in read_data.iter().zip(write_data.iter()) {
         //     assert_eq!(b + 1, a);
         // }
@@ -95,13 +98,16 @@ struct ComputeTestPlugin;
 impl Plugin for ComputeTestPlugin {
     fn build(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
-        let mut render_graph = render_app.world_mut().resource_mut::<RenderGraph>();
-        render_graph.add_node(IncrementLabel, IncrementNode);
+        render_app.add_systems(RenderStartup, add_render_graph_node);
         render_app.add_systems(
             Render,
             setup_render_resources.in_set(RenderSystems::Prepare),
         );
     }
+}
+
+fn add_render_graph_node(mut render_graph: ResMut<RenderGraph>) {
+    render_graph.add_node(IncrementLabel, IncrementNode);
 }
 
 fn setup_render_resources(
@@ -144,7 +150,12 @@ fn test_double_buffer_increment() {
                 close_when_requested: false,
                 ..Default::default()
             })
+            .set(RenderPlugin {
+                synchronous_pipeline_compilation: true,
+                ..Default::default()
+            })
             .disable::<WinitPlugin>(),
+        ScheduleRunnerPlugin::run_loop(Duration::from_millis(16)),
         SwappableBindGroupPlugin,
         ComputeTestPlugin,
     ));
@@ -152,7 +163,7 @@ fn test_double_buffer_increment() {
     app.finish();
     app.cleanup();
 
-    let num_frames = 10;
+    let num_frames = 100;
     for _ in 0..num_frames {
         app.update();
     }
