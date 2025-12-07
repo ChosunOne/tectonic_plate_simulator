@@ -47,6 +47,7 @@ struct IncrementLabel;
 struct IncrementNode;
 
 impl Node for IncrementNode {
+    #[allow(clippy::cast_possible_truncation)]
     fn run(
         &self,
         _graph: &mut RenderGraphContext,
