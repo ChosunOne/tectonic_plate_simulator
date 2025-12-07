@@ -24,7 +24,7 @@ use bevy::{
     winit::WinitPlugin,
 };
 use tectonic_plate_simulator::{
-    plugins::swappable_bind_group::SwappableBindGroupPlugin,
+    plugins::swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
     render::{
         double_buffer::DoubleBuffer,
         swappable_bind_group::{BindGroupBuilder, SwappableBindGroup},
@@ -57,14 +57,10 @@ impl Node for IncrementNode {
         let increment_pipeline = world.resource::<IncrementPipeline>();
         let bind_group = world.resource::<SwappableBindGroup>();
 
-        let test_buffer = world.resource::<TestDoubleBuffer>();
-        let render_queue = world.resource::<RenderQueue>();
-
         let Some(pipeline) = pipeline_cache.get_compute_pipeline(increment_pipeline.pipeline_id)
         else {
             return Ok(());
         };
-        let render_device = render_context.render_device().clone();
 
         let mut pass =
             render_context
@@ -77,17 +73,6 @@ impl Node for IncrementNode {
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, bind_group.current(), &[]);
         pass.dispatch_workgroups((BUFFER_SIZE as u32).div_ceil(64), 1, 1);
-        let read_data = test_buffer
-            .0
-            .read_back_read_buffer(&render_device, render_queue);
-        let write_data = test_buffer
-            .0
-            .read_back_write_buffer(&render_device, render_queue);
-
-        &dbg!(&write_data);
-        // for (&a, &b) in read_data.iter().zip(write_data.iter()) {
-        //     assert_eq!(b + 1, a);
-        // }
 
         Ok(())
     }
@@ -99,15 +84,45 @@ impl Plugin for ComputeTestPlugin {
     fn build(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
         render_app.add_systems(RenderStartup, add_render_graph_node);
-        render_app.add_systems(
-            Render,
-            setup_render_resources.in_set(RenderSystems::Prepare),
-        );
+        render_app.add_systems(RenderStartup, setup_render_resources);
     }
 }
 
 fn add_render_graph_node(mut render_graph: ResMut<RenderGraph>) {
     render_graph.add_node(IncrementLabel, IncrementNode);
+}
+
+struct ComputeTestResultsPlugin;
+
+impl Plugin for ComputeTestResultsPlugin {
+    fn build(&self, app: &mut App) {
+        let render_app = app.sub_app_mut(RenderApp);
+        render_app.add_systems(
+            Render,
+            check_compute_results
+                .in_set(RenderSystems::Cleanup)
+                .after(swap_bind_groups),
+        );
+    }
+}
+
+fn check_compute_results(
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    test_double_buffer: Res<TestDoubleBuffer>,
+) {
+    let read_data = test_double_buffer
+        .0
+        .read_back_read_buffer(&render_device, &render_queue);
+    let write_data = test_double_buffer
+        .0
+        .read_back_write_buffer(&render_device, &render_queue);
+    if read_data[0] < write_data[0] {
+        return;
+    }
+    for (&a, &b) in read_data.iter().zip(write_data.iter()) {
+        assert_eq!(a, b + 1);
+    }
 }
 
 fn setup_render_resources(
@@ -116,7 +131,7 @@ fn setup_render_resources(
     mut pipeline_cache: ResMut<PipelineCache>,
     asset_server: Res<AssetServer>,
 ) {
-    let data = vec![0u32; BUFFER_SIZE];
+    let data = vec![1u32; BUFFER_SIZE];
     let double_buffer = DoubleBuffer::new(&render_device, &data, Some("test_buffer"));
 
     commands.insert_resource(TestDoubleBuffer(double_buffer.clone()));
@@ -158,12 +173,13 @@ fn test_double_buffer_increment() {
         ScheduleRunnerPlugin::run_loop(Duration::from_millis(16)),
         SwappableBindGroupPlugin,
         ComputeTestPlugin,
+        ComputeTestResultsPlugin,
     ));
 
     app.finish();
     app.cleanup();
 
-    let num_frames = 100;
+    let num_frames = 10;
     for _ in 0..num_frames {
         app.update();
     }

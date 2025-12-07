@@ -100,7 +100,7 @@ impl BindGroupBuilder {
         } else {
             let label_b = label.map(|l| format!("{l}_b"));
             let swapped_bind_group =
-                self.build_bind_group(render_device, &layout, label_b.as_deref(), false);
+                self.build_bind_group(render_device, &layout, label_b.as_deref(), true);
             vec![unswapped_bind_group, swapped_bind_group]
         };
 
@@ -243,7 +243,7 @@ impl BindGroupBuilder {
 pub struct SwappableBindGroup {
     layout: BindGroupLayout,
     bind_groups: Vec<BindGroup>,
-    current_index: usize,
+    pub current_index: usize,
     double_buffers: Vec<Box<dyn DoubleBufferHandle + Send + Sync>>,
 }
 

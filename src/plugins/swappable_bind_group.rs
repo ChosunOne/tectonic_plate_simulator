@@ -15,7 +15,7 @@ impl Plugin for SwappableBindGroupPlugin {
     }
 }
 
-fn swap_bind_groups(bind_group: Option<ResMut<SwappableBindGroup>>) {
+pub fn swap_bind_groups(bind_group: Option<ResMut<SwappableBindGroup>>) {
     if let Some(mut bind_group) = bind_group {
         bind_group.swap();
     }
