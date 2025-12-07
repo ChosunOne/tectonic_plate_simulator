@@ -1,8 +1,15 @@
 use bevy::prelude::*;
 
-use crate::resources::mantle_grid::MantleGrid;
+use crate::resources::{gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid};
 
-pub fn draw_triangle_grid(mut gizmos: Gizmos, grid: Res<MantleGrid>) {
+pub fn draw_triangle_grid(
+    mut gizmos: Gizmos,
+    grid: Res<MantleGrid>,
+    visibility: Res<GizmoVisibility>,
+) {
+    if !visibility.triangle_grid {
+        return;
+    }
     let points = grid.sphere.raw_points();
     let indices = grid.sphere.get_all_indices();
 
@@ -23,7 +30,14 @@ pub fn draw_triangle_grid(mut gizmos: Gizmos, grid: Res<MantleGrid>) {
     }
 }
 
-pub fn draw_triangle_grid_centers(mut gizmos: Gizmos, grid: Res<MantleGrid>) {
+pub fn draw_triangle_grid_centers(
+    mut gizmos: Gizmos,
+    grid: Res<MantleGrid>,
+    visibility: Res<GizmoVisibility>,
+) {
+    if !visibility.triangle_centers {
+        return;
+    }
     let indices = grid.sphere.get_all_indices();
     for triangle_idx in 0..indices.len() / 3 {
         let center = grid.cells[triangle_idx].center;
@@ -31,7 +45,14 @@ pub fn draw_triangle_grid_centers(mut gizmos: Gizmos, grid: Res<MantleGrid>) {
     }
 }
 
-pub fn draw_triangle_grid_neighbors(mut gizmos: Gizmos, grid: Res<MantleGrid>) {
+pub fn draw_triangle_grid_neighbors(
+    mut gizmos: Gizmos,
+    grid: Res<MantleGrid>,
+    visibility: Res<GizmoVisibility>,
+) {
+    if !visibility.triangle_neighbors {
+        return;
+    }
     for i in 0..grid.cells.len() {
         let center_i = grid.cells[i].center;
         for &neighbor_idx in &grid.neighbors[i] {
