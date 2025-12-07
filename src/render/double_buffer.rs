@@ -1,0 +1,142 @@
+use std::{
+    marker::PhantomData,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
+
+use bevy::render::{
+    render_resource::{
+        Buffer, BufferDescriptor, BufferInitDescriptor, BufferUsages, CommandEncoderDescriptor,
+        MapMode, PollType,
+    },
+    renderer::{RenderDevice, RenderQueue},
+};
+use bytemuck::{AnyBitPattern, NoUninit};
+
+#[derive(Clone)]
+pub struct DoubleBuffer<T: Send + Sync> {
+    buffers: [Buffer; 2],
+    staging: Buffer,
+    // NB: Arc<AtomicUsize> because we want clones of this to stay in sync after swapping
+    read_index: Arc<AtomicUsize>,
+    len: usize,
+    _marker: PhantomData<T>,
+}
+
+impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
+    #[must_use]
+    pub fn new(render_device: &RenderDevice, data: &[T], label: Option<&str>) -> Self {
+        let usage = BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
+        let bytes = bytemuck::cast_slice(data);
+        let zeros = vec![0u8; bytes.len()];
+        let label_read = label.map(|l| format!("{l}_a"));
+        let label_write = label.map(|l| format!("{l}_b"));
+        let label_staging = label.map(|l| format!("{l}_staging"));
+
+        let read_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: label_read.as_deref(),
+            contents: bytes,
+            usage,
+        });
+        let write_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label: label_write.as_deref(),
+            contents: &zeros,
+            usage,
+        });
+        let staging = render_device.create_buffer(&BufferDescriptor {
+            label: label_staging.as_deref(),
+            size: bytes.len() as u64,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self {
+            buffers: [read_buffer, write_buffer],
+            staging,
+            read_index: Arc::new(AtomicUsize::new(0)),
+            len: data.len(),
+            _marker: PhantomData,
+        }
+    }
+
+    /// The length in bytes of the buffer.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Whether the buffer is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Reads back the contents of the current read buffer. Copies from the GPU back to the CPU.
+    #[must_use]
+    pub fn read_back_read_buffer(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<T> {
+        self.read_back_buffer(self.read(), render_device, render_queue)
+    }
+
+    /// Reads back the contents of the current write buffer. Copies from the GPU back to the CPU.
+    #[must_use]
+    pub fn read_back_write_buffer(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<T> {
+        self.read_back_buffer(self.write(), render_device, render_queue)
+    }
+
+    fn read_back_buffer(
+        &self,
+        buffer: &Buffer,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<T> {
+        let size = (self.len * std::mem::size_of::<T>()) as u64;
+        let mut encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("readback_encoder"),
+        });
+        encoder.copy_buffer_to_buffer(buffer, 0, &self.staging, 0, size);
+        render_queue.submit(std::iter::once(encoder.finish()));
+
+        let slice = self.staging.slice(..);
+        slice.map_async(MapMode::Read, |_| {});
+        let _ = render_device.poll(PollType::Wait);
+
+        let data = slice.get_mapped_range();
+        let result = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        self.staging.unmap();
+        result
+    }
+}
+
+pub trait DoubleBufferHandle {
+    fn read(&self) -> &Buffer;
+    fn write(&self) -> &Buffer;
+    fn swap(&self);
+}
+
+impl<T: Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
+    /// Returns a reference to the current read buffer.
+    fn read(&self) -> &Buffer {
+        &self.buffers[self.read_index.load(Ordering::Acquire)]
+    }
+
+    /// Returns a reference to the write buffer.
+    fn write(&self) -> &Buffer {
+        &self.buffers[1 - self.read_index.load(Ordering::Acquire)]
+    }
+
+    /// Swap the read and write buffers.
+    fn swap(&self) {
+        let old = self.read_index.load(Ordering::Acquire);
+        self.read_index.store(1 - old, Ordering::Release);
+    }
+}
