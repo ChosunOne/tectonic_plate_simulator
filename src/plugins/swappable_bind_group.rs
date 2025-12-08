@@ -4,7 +4,7 @@ use bevy::{
     render::{Render, RenderApp, RenderSystems},
 };
 
-use crate::render::swappable_bind_group::SwappableBindGroup;
+use crate::components::render::swappable_bind_group::SwappableBindGroup;
 
 pub struct SwappableBindGroupPlugin;
 

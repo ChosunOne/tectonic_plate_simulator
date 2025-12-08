@@ -24,11 +24,9 @@ use bevy::{
     winit::WinitPlugin,
 };
 use tectonic_plate_simulator::{
+    components::render::swappable_bind_group::{BindGroupBuilder, SwappableBindGroup},
     plugins::swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
-    render::{
-        double_buffer::DoubleBuffer,
-        swappable_bind_group::{BindGroupBuilder, SwappableBindGroup},
-    },
+    render::double_buffer::DoubleBuffer,
 };
 
 const BUFFER_SIZE: usize = 256;
