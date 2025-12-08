@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::resource::Resource,
+    ecs::component::Component,
     render::{
         render_resource::{
             BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingType, Buffer,
@@ -239,7 +239,7 @@ impl BindGroupBuilder {
     }
 }
 
-#[derive(Resource)]
+#[derive(Component)]
 pub struct SwappableBindGroup {
     layout: BindGroupLayout,
     bind_groups: Vec<BindGroup>,

@@ -56,7 +56,10 @@ impl Node for IncrementNode {
     ) -> Result<(), NodeRunError> {
         let pipeline_cache = world.resource::<PipelineCache>();
         let increment_pipeline = world.resource::<IncrementPipeline>();
-        let bind_group = world.resource::<SwappableBindGroup>();
+        let Some(mut query) = world.try_query::<&SwappableBindGroup>() else {
+            return Ok(());
+        };
+        let bind_group = query.single(world).expect("To have bind group");
 
         let Some(pipeline) = pipeline_cache.get_compute_pipeline(increment_pipeline.pipeline_id)
         else {
@@ -151,7 +154,7 @@ fn setup_render_resources(
     });
 
     commands.insert_resource(IncrementPipeline { pipeline_id });
-    commands.insert_resource(swappable);
+    commands.spawn(swappable);
 }
 
 #[test]

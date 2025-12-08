@@ -1,4 +1,4 @@
-use bevy::{core_pipeline::Skybox, prelude::*, render::storage::ShaderStorageBuffer};
+use bevy::{core_pipeline::Skybox, prelude::*};
 use bevy_panorbit_camera::PanOrbitCamera;
 
 use crate::resources::mantle_grid::MantleGrid;
@@ -18,12 +18,6 @@ pub fn setup(
 
     let grid = MantleGrid::new(20);
     let mesh = grid.mesh();
-
-    let num_vertices = grid.sphere.raw_points().len();
-    let vertex_pressure_data = vec![0.0f32; num_vertices];
-    let mut vertex_pressure_buffer_asset = ShaderStorageBuffer::from(vertex_pressure_data);
-    vertex_pressure_buffer_asset.buffer_description.usage |=
-        bevy::render::render_resource::BufferUsages::STORAGE;
 
     commands.spawn((Mesh3d(meshes.add(mesh)), Transform::from_xyz(0.0, 0.0, 0.0)));
     commands.insert_resource(grid);

@@ -1,6 +1,6 @@
 use bevy::{
     app::Plugin,
-    ecs::{schedule::IntoScheduleConfigs, system::ResMut},
+    ecs::{schedule::IntoScheduleConfigs, system::Query},
     render::{Render, RenderApp, RenderSystems},
 };
 
@@ -15,8 +15,8 @@ impl Plugin for SwappableBindGroupPlugin {
     }
 }
 
-pub fn swap_bind_groups(bind_group: Option<ResMut<SwappableBindGroup>>) {
-    if let Some(mut bind_group) = bind_group {
+pub fn swap_bind_groups(mut query: Query<&mut SwappableBindGroup>) {
+    for mut bind_group in &mut query {
         bind_group.swap();
     }
 }
