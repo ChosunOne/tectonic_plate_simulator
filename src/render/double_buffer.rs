@@ -60,18 +60,6 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
         }
     }
 
-    /// The length in bytes of the buffer.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    /// Whether the buffer is empty.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
     /// Reads back the contents of the current read buffer. Copies from the GPU back to the CPU.
     #[must_use]
     pub fn read_back_read_buffer(
@@ -121,6 +109,9 @@ pub trait DoubleBufferHandle {
     fn read(&self) -> &Buffer;
     fn write(&self) -> &Buffer;
     fn swap(&self);
+    fn elem_size(&self) -> usize;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
 }
 
 impl<T: Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
@@ -138,5 +129,20 @@ impl<T: Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
     fn swap(&self) {
         let old = self.read_index.load(Ordering::Acquire);
         self.read_index.store(1 - old, Ordering::Release);
+    }
+
+    /// The size of each element in the buffer
+    fn elem_size(&self) -> usize {
+        std::mem::size_of::<T>()
+    }
+
+    /// The number of pre-serialization elements in the buffer.
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Whether the buffer is empty.
+    fn is_empty(&self) -> bool {
+        self.len == 0
     }
 }
