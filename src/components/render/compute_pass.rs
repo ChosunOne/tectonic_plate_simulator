@@ -2,19 +2,14 @@ use std::borrow::Cow;
 
 use bevy::{
     asset::{AssetServer, Handle},
-    ecs::{
-        component::{Component, ComponentId},
-        entity::Entity,
-        query::With,
-        world::World,
-    },
+    ecs::{component::Component, entity::Entity, query::With, world::World},
     log::warn,
     platform::collections::HashMap,
     render::{
         render_graph::Node,
         render_resource::{
             BufferInitDescriptor, BufferUsages, CachedComputePipelineId, CachedPipelineState,
-            ComputePipelineDescriptor, PipelineCache,
+            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache,
         },
         renderer::RenderDevice,
     },
