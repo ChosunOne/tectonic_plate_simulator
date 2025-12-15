@@ -1,4 +1,5 @@
 pub mod bind_groups;
+pub mod compute_pass;
 pub mod swappable_bind_group;
 
 pub use bind_groups::*;
