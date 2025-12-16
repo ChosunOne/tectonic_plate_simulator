@@ -86,6 +86,16 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
         render_device: &RenderDevice,
         render_queue: &RenderQueue,
     ) -> Vec<T> {
+        let bytes = self.read_back_buffer_bytes(buffer, render_device, render_queue);
+        bytemuck::cast_slice(&bytes).to_vec()
+    }
+
+    fn read_back_buffer_bytes(
+        &self,
+        buffer: &Buffer,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<u8> {
         let size = (self.len * std::mem::size_of::<T>()) as u64;
         let mut encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("readback_encoder"),
@@ -98,7 +108,7 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
         let _ = render_device.poll(PollType::Wait);
 
         let data = slice.get_mapped_range();
-        let result = bytemuck::cast_slice(&data).to_vec();
+        let result = data.to_vec();
         drop(data);
         self.staging.unmap();
         result
@@ -112,9 +122,19 @@ pub trait DoubleBufferHandle {
     fn elem_size(&self) -> usize;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
+    fn read_back_read_bytes(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<u8>;
+    fn read_back_write_bytes(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<u8>;
 }
 
-impl<T: Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
+impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
     /// Returns a reference to the current read buffer.
     fn read(&self) -> &Buffer {
         &self.buffers[self.read_index.load(Ordering::Acquire)]
@@ -144,5 +164,21 @@ impl<T: Send + Sync> DoubleBufferHandle for DoubleBuffer<T> {
     /// Whether the buffer is empty.
     fn is_empty(&self) -> bool {
         self.len == 0
+    }
+
+    fn read_back_read_bytes(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<u8> {
+        self.read_back_buffer_bytes(self.read(), render_device, render_queue)
+    }
+
+    fn read_back_write_bytes(
+        &self,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Vec<u8> {
+        self.read_back_buffer_bytes(self.write(), render_device, render_queue)
     }
 }

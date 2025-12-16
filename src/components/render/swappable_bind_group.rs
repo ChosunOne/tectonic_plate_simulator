@@ -5,9 +5,10 @@ use bevy::{
             BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingType, Buffer,
             BufferBindingType, ShaderStages,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
     },
 };
+use bytemuck::{AnyBitPattern, NoUninit};
 
 use crate::render::double_buffer::{DoubleBuffer, DoubleBufferHandle};
 
@@ -130,7 +131,7 @@ impl BindGroupBuilder {
         self
     }
 
-    pub fn add_compute_double<T: 'static + Send + Sync>(
+    pub fn add_compute_double<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
         &mut self,
         double_buffer: DoubleBuffer<T>,
     ) -> &mut Self {
@@ -179,7 +180,7 @@ impl BindGroupBuilder {
         self
     }
 
-    pub fn add_fragment_double<T: 'static + Send + Sync>(
+    pub fn add_fragment_double<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
         &mut self,
         double_buffer: DoubleBuffer<T>,
     ) -> &mut Self {
@@ -248,16 +249,20 @@ pub struct SwappableBindGroup {
 }
 
 impl SwappableBindGroup {
+    /// Gets the layout of the swappable bind group
     #[must_use]
     pub fn layout(&self) -> &BindGroupLayout {
         &self.layout
     }
 
+    /// Gets the version of the bind group corresponding to the current
+    /// swap status.
     #[must_use]
     pub fn current(&self) -> &BindGroup {
         &self.bind_groups[self.current_index]
     }
 
+    /// Swaps the bind groups and the related buffers
     pub fn swap(&mut self) {
         if self.bind_groups.len() <= 1 {
             return;
@@ -266,5 +271,33 @@ impl SwappableBindGroup {
         for db in &self.double_buffers {
             db.swap();
         }
+    }
+
+    /// Reads back the contents of read buffer of the double buffer at the given index.
+    #[must_use]
+    pub fn read_back_double_buffer_read<T: NoUninit + AnyBitPattern + Send + Sync>(
+        &self,
+        index: usize,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Option<Vec<T>> {
+        self.double_buffers
+            .get(index)
+            .map(|db| db.read_back_read_bytes(render_device, render_queue))
+            .map(|data| bytemuck::cast_slice(&data).to_vec())
+    }
+
+    /// Reads back the contents of the write buffer of the double buffer at the given index.
+    #[must_use]
+    pub fn read_back_double_buffer_write<T: NoUninit + AnyBitPattern + Send + Sync>(
+        &self,
+        index: usize,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Option<Vec<T>> {
+        self.double_buffers
+            .get(index)
+            .map(|db| db.read_back_write_bytes(render_device, render_queue))
+            .map(|data| bytemuck::cast_slice(&data).to_vec())
     }
 }
