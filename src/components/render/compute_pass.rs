@@ -220,6 +220,13 @@ pub struct ComputePass {
     label: &'static str,
 }
 
+impl ComputePass {
+    #[must_use]
+    pub fn builder() -> ComputePassBuilder {
+        ComputePassBuilder::new()
+    }
+}
+
 impl Node for ComputePass {
     fn update(&mut self, world: &mut World) {
         if matches!(self.state, ComputePassState::Ready) {
