@@ -249,6 +249,11 @@ pub struct SwappableBindGroup {
 }
 
 impl SwappableBindGroup {
+    #[must_use]
+    pub fn builder() -> BindGroupBuilder {
+        BindGroupBuilder::new()
+    }
+
     /// Gets the layout of the swappable bind group
     #[must_use]
     pub fn layout(&self) -> &BindGroupLayout {

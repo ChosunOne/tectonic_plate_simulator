@@ -1,6 +1,7 @@
 use bevy::{
     app::Plugin,
     ecs::{schedule::IntoScheduleConfigs, system::Query},
+    log::info,
     render::{Render, RenderApp, RenderSystems},
 };
 
