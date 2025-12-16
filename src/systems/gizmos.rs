@@ -10,8 +10,8 @@ pub fn draw_triangle_grid(
     if !visibility.triangle_grid {
         return;
     }
-    let points = grid.sphere.raw_points();
-    let indices = grid.sphere.get_all_indices();
+    let points = grid.sphere().raw_points();
+    let indices = grid.sphere().get_all_indices();
 
     for triangle in indices.chunks(3) {
         let (a, b, c) = (
@@ -38,9 +38,9 @@ pub fn draw_triangle_grid_centers(
     if !visibility.triangle_centers {
         return;
     }
-    let indices = grid.sphere.get_all_indices();
+    let indices = grid.sphere().get_all_indices();
     for triangle_idx in 0..indices.len() / 3 {
-        let center = grid.cells[triangle_idx].center;
+        let center = grid.cells()[triangle_idx].center;
         gizmos.cross(center, 0.005, Color::srgb(1.0, 0.0, 0.0));
     }
 }
@@ -53,12 +53,12 @@ pub fn draw_triangle_grid_neighbors(
     if !visibility.triangle_neighbors {
         return;
     }
-    for i in 0..grid.cells.len() {
-        let center_i = grid.cells[i].center;
-        for &neighbor_idx in &grid.neighbors[i] {
+    for i in 0..grid.cells().len() {
+        let center_i = grid.cells()[i].center;
+        for &neighbor_idx in &grid.neighbors()[i] {
             if neighbor_idx > i {
                 // Only draw each connection once
-                let center_j = grid.cells[neighbor_idx].center;
+                let center_j = grid.cells()[neighbor_idx].center;
                 gizmos.line(center_i, center_j, Color::srgb(0.0, 0.0, 1.0));
             }
         }

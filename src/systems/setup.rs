@@ -8,6 +8,7 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
+    grid: Res<MantleGrid>,
 ) {
     // Spawn the sphere
     commands.spawn((
@@ -16,11 +17,9 @@ pub fn setup(
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    let grid = MantleGrid::new(20);
     let mesh = grid.mesh();
 
     commands.spawn((Mesh3d(meshes.add(mesh)), Transform::from_xyz(0.0, 0.0, 0.0)));
-    commands.insert_resource(grid);
 
     // Spawn the camera
     commands.spawn((

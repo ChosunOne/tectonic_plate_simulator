@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use bevy::{
     asset::RenderAssetUsages,
@@ -11,13 +11,9 @@ use hexasphere::shapes::IcoSphere;
 #[derive(Debug, Clone)]
 pub struct CellData {
     pub center: Vec3,
-    pub flux: Vec<f32>,
-    pub pressure: f32,
     pub vertices: [u32; 3],
     pub edges: [i32; 3],
-    pub barycentric_gradients: [Vec3; 3],
     pub edge_normals: [Vec3; 3],
-    pub area: f32,
 }
 
 #[derive(Clone)]
@@ -29,7 +25,46 @@ pub struct Edge {
 }
 
 #[derive(Resource, Clone)]
-pub struct MantleGrid {
+pub struct MantleGrid(Arc<MantleGridInner>);
+
+impl MantleGrid {
+    #[must_use]
+    pub fn new(subdivisions: usize) -> Self {
+        Self(Arc::new(MantleGridInner::new(subdivisions)))
+    }
+
+    #[must_use]
+    pub fn mesh(&self) -> Mesh {
+        self.0.mesh()
+    }
+
+    #[must_use]
+    pub fn sphere(&self) -> &IcoSphere<()> {
+        &self.0.sphere
+    }
+
+    #[must_use]
+    pub fn cells(&self) -> &[CellData] {
+        &self.0.cells
+    }
+
+    #[must_use]
+    pub fn neighbors(&self) -> &[Vec<usize>] {
+        &self.0.neighbors
+    }
+
+    #[must_use]
+    pub fn vertex_triangles(&self) -> &[Vec<usize>] {
+        &self.0.vertex_triangles
+    }
+
+    #[must_use]
+    pub fn edges(&self) -> &[Edge] {
+        &self.0.edges
+    }
+}
+
+struct MantleGridInner {
     pub sphere: IcoSphere<()>,
     pub cells: Vec<CellData>,
     pub neighbors: Vec<Vec<usize>>,
@@ -45,7 +80,7 @@ impl ExtractResource for MantleGrid {
     }
 }
 
-impl MantleGrid {
+impl MantleGridInner {
     #[must_use]
     #[allow(clippy::too_many_lines)]
     pub fn new(subdivisions: usize) -> Self {
@@ -178,12 +213,8 @@ impl MantleGrid {
 
             let e1 = p1 - p0;
             let e2 = p2 - p0;
-            let area = e1.cross(e2).length() / 2.0;
 
             let normal: Vec3 = e1.cross(e2).normalize();
-            let grad0 = normal.cross(p2 - p1) / (2.0 * area);
-            let grad1 = normal.cross(p0 - p2) / (2.0 * area);
-            let grad2 = normal.cross(p1 - p0) / (2.0 * area);
 
             let center = ((p0 + p1 + p2) / 3.0).normalize();
             let edge_mid0 = (p0 + p1) / 2.0;
@@ -206,13 +237,9 @@ impl MantleGrid {
 
             cells.push(CellData {
                 center,
-                pressure: tri_idx as f32,
-                flux: vec![0.0; 3],
                 vertices: [v0, v1, v2],
                 edges: cell_edges,
-                barycentric_gradients: [grad0, grad1, grad2],
                 edge_normals: [edge_normal0, edge_normal1, edge_normal2],
-                area,
             });
         }
 
