@@ -24,6 +24,7 @@ pub struct Edge {
     pub normal: Vec3,
 }
 
+// NB: Structured this way to allow fast sharing between render and main world
 #[derive(Resource, Clone)]
 pub struct MantleGrid(Arc<MantleGridInner>);
 

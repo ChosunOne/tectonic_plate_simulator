@@ -40,14 +40,16 @@ impl BindGroupBuilder {
     pub fn build(self, render_device: &RenderDevice, label: Option<&str>) -> SwappableBindGroup {
         let mut layout_entries = Vec::new();
         let mut binding_index = 0u32;
+        let mut buffers = vec![];
 
         for entry in &self.entries {
             match entry {
                 BufferEntry::Static {
                     visibility,
                     read_only,
-                    ..
+                    buffer,
                 } => {
+                    buffers.push(buffer.clone());
                     layout_entries.push(BindGroupLayoutEntry {
                         binding: binding_index,
                         visibility: *visibility,
@@ -106,6 +108,7 @@ impl BindGroupBuilder {
         };
 
         SwappableBindGroup {
+            buffers,
             layout,
             bind_groups,
             current_index: 0,
@@ -245,6 +248,7 @@ pub struct SwappableBindGroup {
     layout: BindGroupLayout,
     bind_groups: Vec<BindGroup>,
     pub current_index: usize,
+    buffers: Vec<Buffer>,
     double_buffers: Vec<Box<dyn DoubleBufferHandle + Send + Sync>>,
 }
 
@@ -276,6 +280,23 @@ impl SwappableBindGroup {
         for db in &self.double_buffers {
             db.swap();
         }
+    }
+
+    /// Get the static buffer indicated by the index. The index in this case is relative
+    /// to the total number of *static* buffers, not total buffers.
+    #[must_use]
+    pub fn get_buffer(&self, index: usize) -> Option<&Buffer> {
+        self.buffers.get(index)
+    }
+
+    /// Get the double buffer indicated by the index. The index in this case is relative
+    /// to the total number of *double* buffers, not total buffers.
+    #[must_use]
+    pub fn get_double_buffer(
+        &self,
+        index: usize,
+    ) -> Option<&(dyn DoubleBufferHandle + Send + Sync + 'static)> {
+        self.double_buffers.get(index).map(|x| &**x)
     }
 
     /// Reads back the contents of read buffer of the double buffer at the given index.
