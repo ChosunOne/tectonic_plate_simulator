@@ -7,3 +7,6 @@ pub struct PressureBindGroup;
 /// Marker component labeling a `SwappableBindGroup` as a `VelocityBindGroup`.
 #[derive(Component)]
 pub struct VelocityBindGroup;
+
+#[derive(Component)]
+pub struct VertexPressureBindGroup;

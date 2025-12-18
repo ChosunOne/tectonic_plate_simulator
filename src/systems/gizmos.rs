@@ -55,7 +55,7 @@ pub fn draw_triangle_grid_neighbors(
     }
     for i in 0..grid.cells().len() {
         let center_i = grid.cells()[i].center;
-        for &neighbor_idx in &grid.neighbors()[i] {
+        for neighbor_idx in grid.cell_adjacency().get(i) {
             if neighbor_idx > i {
                 // Only draw each connection once
                 let center_j = grid.cells()[neighbor_idx].center;

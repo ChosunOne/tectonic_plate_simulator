@@ -89,9 +89,13 @@ impl ComputePassBuilder {
         self
     }
 
-    /// Add a readonly buffer populated with the supplied data
     #[must_use]
-    pub fn buffer_read<T: NoUninit + Send + Sync + 'static>(mut self, data: Vec<T>) -> Self {
+    pub fn buffer<T: NoUninit + Send + Sync + 'static>(
+        mut self,
+        data: Vec<T>,
+        read_only: bool,
+        usage: BufferUsages,
+    ) -> Self {
         self.buffer_adders.push(Box::new(
             move |render_device: &RenderDevice,
                   builder: &mut BindGroupBuilder,
@@ -99,30 +103,24 @@ impl ComputePassBuilder {
                 let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
                     label,
                     contents: bytemuck::cast_slice(&data),
-                    usage: BufferUsages::STORAGE,
+                    usage,
                 });
-                builder.add_compute_read(buffer);
+                builder.add_compute(buffer, read_only);
             },
         ));
         self
     }
 
+    /// Add a readonly buffer populated with the supplied data
+    #[must_use]
+    pub fn buffer_read<T: NoUninit + Send + Sync + 'static>(self, data: Vec<T>) -> Self {
+        self.buffer(data, true, BufferUsages::STORAGE)
+    }
+
     /// Add a buffer populated with the supplied data
     #[must_use]
-    pub fn buffer_write<T: NoUninit + Send + Sync + 'static>(mut self, data: Vec<T>) -> Self {
-        self.buffer_adders.push(Box::new(
-            move |render_device: &RenderDevice,
-                  builder: &mut BindGroupBuilder,
-                  label: Option<&str>| {
-                let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-                    label,
-                    contents: bytemuck::cast_slice(&data),
-                    usage: BufferUsages::STORAGE,
-                });
-                builder.add_compute_write(buffer);
-            },
-        ));
-        self
+    pub fn buffer_write<T: NoUninit + Send + Sync + 'static>(self, data: Vec<T>) -> Self {
+        self.buffer(data, false, BufferUsages::STORAGE)
     }
 
     /// Sets the marker component to add to the owned bind group entity.

@@ -1,12 +1,12 @@
-use bevy::{prelude::*, render::extract_resource::ExtractResourcePlugin};
+use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use leafwing_input_manager::{plugin::InputManagerPlugin, prelude::ActionState};
 use tectonic_plate_simulator::{
     plugins::{
         mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
-        swappable_bind_group::SwappableBindGroupPlugin,
+        swappable_bind_group::SwappableBindGroupPlugin, vertex_pressure::VertexPressurePlugin,
     },
-    resources::{gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid},
+    resources::gizmo_visibility::GizmoVisibility,
     systems::{
         gizmos::{draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors},
         input::{GizmoAction, gizmo_input_map, toggle_gizmo_visibility},
@@ -22,6 +22,7 @@ fn main() {
         .add_plugins(SwappableBindGroupPlugin)
         .add_plugins(MantleGridPlugin)
         .add_plugins(PressurePlugin)
+        .add_plugins(VertexPressurePlugin)
         .init_resource::<GizmoVisibility>()
         .init_resource::<ActionState<GizmoAction>>()
         .insert_resource(gizmo_input_map())

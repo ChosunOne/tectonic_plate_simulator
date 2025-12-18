@@ -3,7 +3,8 @@ use bevy::{
     render::{
         render_resource::{
             BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingType, Buffer,
-            BufferBindingType, ShaderStages,
+            BufferBindingType, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, MapMode,
+            PollType, ShaderStages,
         },
         renderer::{RenderDevice, RenderQueue},
     },
@@ -116,22 +117,21 @@ impl BindGroupBuilder {
         }
     }
 
-    pub fn add_compute_read(&mut self, buffer: Buffer) -> &mut Self {
+    pub fn add_compute(&mut self, buffer: Buffer, read_only: bool) -> &mut Self {
         self.entries.push(BufferEntry::Static {
             buffer,
             visibility: ShaderStages::COMPUTE,
-            read_only: true,
+            read_only,
         });
         self
     }
 
+    pub fn add_compute_read(&mut self, buffer: Buffer) -> &mut Self {
+        self.add_compute(buffer, true)
+    }
+
     pub fn add_compute_write(&mut self, buffer: Buffer) -> &mut Self {
-        self.entries.push(BufferEntry::Static {
-            buffer,
-            visibility: ShaderStages::COMPUTE,
-            read_only: false,
-        });
-        self
+        self.add_compute(buffer, false)
     }
 
     pub fn add_compute_double<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
@@ -297,6 +297,43 @@ impl SwappableBindGroup {
         index: usize,
     ) -> Option<&(dyn DoubleBufferHandle + Send + Sync + 'static)> {
         self.double_buffers.get(index).map(|x| &**x)
+    }
+
+    /// Reads back the contents of the buffer at the given index.
+    #[must_use]
+    pub fn read_back_buffer<T: NoUninit + AnyBitPattern + Send + Sync>(
+        &self,
+        index: usize,
+        size: usize,
+        render_device: &RenderDevice,
+        render_queue: &RenderQueue,
+    ) -> Option<Vec<T>> {
+        self.buffers
+            .get(index)
+            .map(|b| {
+                let staging_buffer = render_device.create_buffer(&BufferDescriptor {
+                    label: Some("readback_buffer"),
+                    size: size as u64,
+                    usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                let mut encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
+                    label: Some("readback_encoder"),
+                });
+                encoder.copy_buffer_to_buffer(b, 0, &staging_buffer, 0, size as u64);
+                render_queue.submit(std::iter::once(encoder.finish()));
+
+                let slice = staging_buffer.slice(..);
+                slice.map_async(MapMode::Read, |_| {});
+                let _ = render_device.poll(PollType::Wait);
+
+                let data = slice.get_mapped_range();
+                let result = data.to_vec();
+                drop(data);
+                staging_buffer.unmap();
+                result
+            })
+            .map(|data| bytemuck::cast_slice(&data).to_vec())
     }
 
     /// Reads back the contents of read buffer of the double buffer at the given index.
