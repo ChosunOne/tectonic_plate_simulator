@@ -119,7 +119,7 @@ fn check_compute_results(
     let write_data = test_double_buffer
         .0
         .read_back_write_buffer(&render_device, &render_queue);
-    if read_data[0] < write_data[0] {
+    if read_data[0] == write_data[0] {
         return;
     }
     for (&a, &b) in read_data.iter().zip(write_data.iter()) {
@@ -130,7 +130,7 @@ fn check_compute_results(
 fn setup_render_resources(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
-    mut pipeline_cache: ResMut<PipelineCache>,
+    pipeline_cache: ResMut<PipelineCache>,
     asset_server: Res<AssetServer>,
 ) {
     let data = vec![1u32; BUFFER_SIZE];

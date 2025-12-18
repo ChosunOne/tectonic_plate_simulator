@@ -92,7 +92,7 @@ fn check_results(
         return;
     };
 
-    if read_data[0] < write_data[0] {
+    if read_data[0] == write_data[0] {
         return;
     }
 

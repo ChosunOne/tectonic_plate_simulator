@@ -30,7 +30,6 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
     pub fn new(render_device: &RenderDevice, data: &[T], label: Option<&str>) -> Self {
         let usage = BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC;
         let bytes = bytemuck::cast_slice(data);
-        let zeros = vec![0u8; bytes.len()];
         let label_read = label.map(|l| format!("{l}_a"));
         let label_write = label.map(|l| format!("{l}_b"));
         let label_staging = label.map(|l| format!("{l}_staging"));
@@ -42,7 +41,7 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
         });
         let write_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: label_write.as_deref(),
-            contents: &zeros,
+            contents: bytes,
             usage,
         });
         let staging = render_device.create_buffer(&BufferDescriptor {

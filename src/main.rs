@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use leafwing_input_manager::{plugin::InputManagerPlugin, prelude::ActionState};
 use tectonic_plate_simulator::{
+    materials::pressure_material::PressureMaterial,
     plugins::{
         mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
         swappable_bind_group::SwappableBindGroupPlugin, vertex_pressure::VertexPressurePlugin,
@@ -23,6 +24,7 @@ fn main() {
         .add_plugins(MantleGridPlugin)
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
+        .add_plugins(MaterialPlugin::<PressureMaterial>::default())
         .init_resource::<GizmoVisibility>()
         .init_resource::<ActionState<GizmoAction>>()
         .insert_resource(gizmo_input_map())

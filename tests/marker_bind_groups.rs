@@ -147,7 +147,7 @@ fn check_compute_results(
         panic!("Failed to get data from bind group");
     };
 
-    if read_data[0] < write_data[0] {
+    if read_data[0] == write_data[0] {
         return;
     }
 

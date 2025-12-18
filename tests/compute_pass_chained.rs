@@ -117,7 +117,7 @@ fn check_chained_passes_results(
         return;
     };
 
-    if first_read[0] < first_write[0] {
+    if first_read[0] == first_write[0] {
         return;
     }
 

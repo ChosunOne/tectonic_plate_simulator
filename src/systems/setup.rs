@@ -1,25 +1,30 @@
 use bevy::{core_pipeline::Skybox, prelude::*};
 use bevy_panorbit_camera::PanOrbitCamera;
 
-use crate::resources::mantle_grid::MantleGrid;
+use crate::{materials::pressure_material::PressureMaterial, resources::mantle_grid::MantleGrid};
 
 pub fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
+    mut pressure_materials: ResMut<Assets<PressureMaterial>>,
     asset_server: Res<AssetServer>,
     grid: Res<MantleGrid>,
 ) {
     // Spawn the sphere
     commands.spawn((
         Mesh3d(meshes.add(Sphere::new(0.8))),
-        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.7, 0.6))),
+        MeshMaterial3d(standard_materials.add(Color::srgb(0.8, 0.7, 0.6))),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
     let mesh = grid.mesh();
 
-    commands.spawn((Mesh3d(meshes.add(mesh)), Transform::from_xyz(0.0, 0.0, 0.0)));
+    commands.spawn((
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(pressure_materials.add(PressureMaterial)),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
 
     // Spawn the camera
     commands.spawn((
