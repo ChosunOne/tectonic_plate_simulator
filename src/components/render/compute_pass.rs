@@ -9,7 +9,7 @@ use bevy::{
         render_graph::Node,
         render_resource::{
             BufferInitDescriptor, BufferUsages, CachedComputePipelineId, CachedPipelineState,
-            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache,
+            ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache, ShaderStages,
         },
         renderer::RenderDevice,
     },
@@ -95,6 +95,7 @@ impl ComputePassBuilder {
         data: Vec<T>,
         read_only: bool,
         usage: BufferUsages,
+        visibility: ShaderStages,
     ) -> Self {
         self.buffer_adders.push(Box::new(
             move |render_device: &RenderDevice,
@@ -105,7 +106,7 @@ impl ComputePassBuilder {
                     contents: bytemuck::cast_slice(&data),
                     usage,
                 });
-                builder.add_compute(buffer, read_only);
+                builder.add_buffer(buffer, visibility, read_only);
             },
         ));
         self
@@ -114,13 +115,13 @@ impl ComputePassBuilder {
     /// Add a readonly buffer populated with the supplied data
     #[must_use]
     pub fn buffer_read<T: NoUninit + Send + Sync + 'static>(self, data: Vec<T>) -> Self {
-        self.buffer(data, true, BufferUsages::STORAGE)
+        self.buffer(data, true, BufferUsages::STORAGE, ShaderStages::COMPUTE)
     }
 
     /// Add a buffer populated with the supplied data
     #[must_use]
     pub fn buffer_write<T: NoUninit + Send + Sync + 'static>(self, data: Vec<T>) -> Self {
-        self.buffer(data, false, BufferUsages::STORAGE)
+        self.buffer(data, false, BufferUsages::STORAGE, ShaderStages::COMPUTE)
     }
 
     /// Sets the marker component to add to the owned bind group entity.

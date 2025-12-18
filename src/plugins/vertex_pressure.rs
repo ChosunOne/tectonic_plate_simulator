@@ -5,7 +5,7 @@ use bevy::{
         RenderApp, RenderStartup,
         graph::CameraDriverLabel,
         render_graph::{RenderGraph, RenderLabel},
-        render_resource::BufferUsages,
+        render_resource::{BufferUsages, ShaderStages},
     },
 };
 
@@ -46,6 +46,7 @@ fn setup_vertex_pressure(world: &mut World) {
             vertex_pressure_data,
             false,
             BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            ShaderStages::COMPUTE | ShaderStages::VERTEX,
         )
         .owned_bind_group_marker(VertexPressureBindGroup)
         .bind_group::<PressureBindGroup>(1)

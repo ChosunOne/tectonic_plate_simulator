@@ -8,7 +8,6 @@ use bevy::{
         schedule::IntoScheduleConfigs,
         system::{Query, Res},
     },
-    log::info,
     prelude::PluginGroup,
     render::{
         Render, RenderApp, RenderPlugin, RenderSystems,

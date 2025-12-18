@@ -117,12 +117,36 @@ impl BindGroupBuilder {
         }
     }
 
-    pub fn add_compute(&mut self, buffer: Buffer, read_only: bool) -> &mut Self {
+    pub fn add_buffer(
+        &mut self,
+        buffer: Buffer,
+        visibility: ShaderStages,
+        read_only: bool,
+    ) -> &mut Self {
         self.entries.push(BufferEntry::Static {
             buffer,
-            visibility: ShaderStages::COMPUTE,
+            visibility,
             read_only,
         });
+        self
+    }
+
+    pub fn add_double_buffer<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
+        &mut self,
+        buffer: DoubleBuffer<T>,
+        visibility: ShaderStages,
+    ) -> &mut Self {
+        let index = self.double_buffers.len();
+        self.double_buffers.push(Box::new(buffer));
+        self.entries.push(BufferEntry::Double {
+            double_buffer_index: index,
+            visibility,
+        });
+        self
+    }
+
+    pub fn add_compute(&mut self, buffer: Buffer, read_only: bool) -> &mut Self {
+        self.add_buffer(buffer, ShaderStages::COMPUTE, read_only);
         self
     }
 
@@ -138,49 +162,31 @@ impl BindGroupBuilder {
         &mut self,
         double_buffer: DoubleBuffer<T>,
     ) -> &mut Self {
-        let index = self.double_buffers.len();
-        self.double_buffers.push(Box::new(double_buffer));
-        self.entries.push(BufferEntry::Double {
-            double_buffer_index: index,
-            visibility: ShaderStages::COMPUTE,
-        });
-        self
+        self.add_double_buffer(double_buffer, ShaderStages::COMPUTE)
+    }
+
+    pub fn add_vertex(&mut self, buffer: Buffer, read_only: bool) -> &mut Self {
+        self.add_buffer(buffer, ShaderStages::VERTEX, read_only)
     }
 
     pub fn add_vertex_read(&mut self, buffer: Buffer) -> &mut Self {
-        self.entries.push(BufferEntry::Static {
-            buffer,
-            visibility: ShaderStages::VERTEX,
-            read_only: true,
-        });
-        self
+        self.add_vertex(buffer, true)
     }
 
     pub fn add_vertex_write(&mut self, buffer: Buffer) -> &mut Self {
-        self.entries.push(BufferEntry::Static {
-            buffer,
-            visibility: ShaderStages::VERTEX,
-            read_only: false,
-        });
-        self
+        self.add_vertex(buffer, false)
+    }
+
+    pub fn add_fragment(&mut self, buffer: Buffer, read_only: bool) -> &mut Self {
+        self.add_buffer(buffer, ShaderStages::FRAGMENT, read_only)
     }
 
     pub fn add_fragment_read(&mut self, buffer: Buffer) -> &mut Self {
-        self.entries.push(BufferEntry::Static {
-            buffer,
-            visibility: ShaderStages::FRAGMENT,
-            read_only: true,
-        });
-        self
+        self.add_fragment(buffer, true)
     }
 
     pub fn add_fragment_write(&mut self, buffer: Buffer) -> &mut Self {
-        self.entries.push(BufferEntry::Static {
-            buffer,
-            visibility: ShaderStages::FRAGMENT,
-            read_only: false,
-        });
-        self
+        self.add_fragment(buffer, false)
     }
 
     pub fn add_fragment_double<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
