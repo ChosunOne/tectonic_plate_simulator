@@ -3,8 +3,8 @@ use bevy::{
     render::{
         render_resource::{
             BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingType, Buffer,
-            BufferBindingType, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, MapMode,
-            PollType, ShaderStages,
+            BufferBindingType, BufferDescriptor, BufferInitDescriptor, BufferUsages,
+            CommandEncoderDescriptor, MapMode, PollType, ShaderStages,
         },
         renderer::{RenderDevice, RenderQueue},
     },
@@ -115,6 +115,23 @@ impl BindGroupBuilder {
             current_index: 0,
             double_buffers: self.double_buffers,
         }
+    }
+
+    pub fn add_buffer_data<T: 'static + NoUninit + AnyBitPattern + Send + Sync>(
+        &mut self,
+        data: &[T],
+        render_device: &RenderDevice,
+        label: Option<&str>,
+        visibility: ShaderStages,
+        usage: BufferUsages,
+        read_only: bool,
+    ) -> &mut Self {
+        let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+            label,
+            contents: bytemuck::cast_slice(data),
+            usage,
+        });
+        self.add_buffer(buffer, visibility, read_only)
     }
 
     pub fn add_buffer(

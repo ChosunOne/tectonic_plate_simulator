@@ -17,7 +17,10 @@ use bevy::{
     winit::WinitPlugin,
 };
 use tectonic_plate_simulator::{
-    components::render::{PressureBindGroup, SwappableBindGroup, VertexPressureBindGroup},
+    components::render::{
+        PressureBindGroup, SwappableBindGroup, VertexPressureBindGroup,
+        VertexPressureReductionBindGroup,
+    },
     plugins::{
         mantle_grid::MantleGridPlugin,
         pressure::PressurePlugin,
@@ -48,12 +51,20 @@ fn verify_vertex_pressure(
     grid: Res<MantleGrid>,
     pressure_query: Query<&SwappableBindGroup, With<PressureBindGroup>>,
     vertex_pressure_query: Query<&SwappableBindGroup, With<VertexPressureBindGroup>>,
+    vertex_pressure_reduction_query: Query<
+        &SwappableBindGroup,
+        With<VertexPressureReductionBindGroup>,
+    >,
 ) {
     let Ok(pressure_bg) = pressure_query.single() else {
         return;
     };
 
     let Ok(vertex_pressure_bg) = vertex_pressure_query.single() else {
+        return;
+    };
+
+    let Ok(vertex_pressure_reduction_bg) = vertex_pressure_reduction_query.single() else {
         return;
     };
 
@@ -94,6 +105,33 @@ fn verify_vertex_pressure(
             "Vertex {vertex_idx}: expected {expected}, got {actual} (diff: {diff})",
         );
     }
+
+    let Some(vertex_pressure_bounds) = vertex_pressure_reduction_bg.read_back_buffer::<f32>(
+        1,
+        2 * std::mem::size_of::<f32>(),
+        &render_device,
+        &render_queue,
+    ) else {
+        return;
+    };
+
+    let expected_min = vertex_pressure.iter().copied().fold(f32::MAX, f32::min);
+    let expected_max = vertex_pressure.iter().copied().fold(f32::MIN, f32::max);
+
+    let actual_min = vertex_pressure_bounds[0];
+    let actual_max = vertex_pressure_bounds[1];
+
+    let min_diff = (actual_min - expected_min).abs();
+    let max_diff = (actual_max - expected_max).abs();
+
+    assert!(
+        min_diff < 0.001,
+        "Min pressure: expected {expected_min}, got {actual_min} (diff: {min_diff})"
+    );
+    assert!(
+        max_diff < 0.001,
+        "Max pressure: expected {expected_max}, got {actual_max} (diff: {max_diff})"
+    );
 }
 
 #[test]
