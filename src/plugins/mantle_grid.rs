@@ -1,9 +1,17 @@
 use bevy::{
     app::{App, Plugin},
-    render::RenderApp,
+    ecs::system::{Commands, Res},
+    render::{
+        RenderApp, RenderStartup,
+        render_resource::{BufferUsages, ShaderStages},
+        renderer::RenderDevice,
+    },
 };
 
-use crate::resources::mantle_grid::MantleGrid;
+use crate::{
+    components::render::{SwappableBindGroup, TopologyBindGroup},
+    resources::mantle_grid::MantleGrid,
+};
 
 pub struct MantleGridPlugin;
 
@@ -13,5 +21,62 @@ impl Plugin for MantleGridPlugin {
         app.insert_resource(grid.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(grid);
+        render_app.add_systems(RenderStartup, setup_edge_topology);
     }
+}
+
+fn setup_edge_topology(
+    mut commands: Commands,
+    grid: Res<MantleGrid>,
+    render_device: Res<RenderDevice>,
+) {
+    let edge_vertex_adjacency = grid.edge_vertex_adjacency();
+    let edge_cell_adjacency = grid.edge_cell_adjacency();
+    let cell_edge_adjacency = grid.cell_edge_adjacency();
+
+    let cell_vertices = grid
+        .cells()
+        .iter()
+        .flat_map(|cell| cell.vertices)
+        .collect::<Vec<u32>>();
+
+    let mut builder = SwappableBindGroup::builder();
+    let visibility = ShaderStages::COMPUTE;
+    let usage = BufferUsages::STORAGE | BufferUsages::COPY_SRC;
+
+    builder.add_buffer_data(
+        edge_vertex_adjacency.indices(),
+        &render_device,
+        Some("edge_vertex_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        edge_cell_adjacency.indices(),
+        &render_device,
+        Some("edge_cell_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        cell_edge_adjacency.indices(),
+        &render_device,
+        Some("cell_edge_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        &cell_vertices,
+        &render_device,
+        Some("cell_vertices"),
+        visibility,
+        usage,
+        true,
+    );
+
+    let swappable = builder.build(&render_device, Some("topology_bind_group"));
+    commands.spawn((swappable, TopologyBindGroup));
 }

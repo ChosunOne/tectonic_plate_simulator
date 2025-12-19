@@ -5,7 +5,8 @@ use tectonic_plate_simulator::{
     materials::pressure_material::PressureMaterial,
     plugins::{
         mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
-        swappable_bind_group::SwappableBindGroupPlugin, vertex_pressure::VertexPressurePlugin,
+        swappable_bind_group::SwappableBindGroupPlugin, velocity::VelocityPlugin,
+        vertex_pressure::VertexPressurePlugin,
     },
     resources::gizmo_visibility::GizmoVisibility,
     systems::{
@@ -24,6 +25,7 @@ fn main() {
         .add_plugins(MantleGridPlugin)
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
+        .add_plugins(VelocityPlugin)
         .add_plugins(MaterialPlugin::<PressureMaterial>::default())
         .init_resource::<GizmoVisibility>()
         .init_resource::<ActionState<GizmoAction>>()
