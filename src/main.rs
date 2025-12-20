@@ -10,7 +10,10 @@ use tectonic_plate_simulator::{
     },
     resources::gizmo_visibility::GizmoVisibility,
     systems::{
-        gizmos::{draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors},
+        gizmos::{
+            draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors,
+            draw_velocity_arrows,
+        },
         input::{GizmoAction, gizmo_input_map, toggle_gizmo_visibility},
         setup::setup,
     },
@@ -38,6 +41,7 @@ fn main() {
                 draw_triangle_grid,
                 draw_triangle_grid_centers,
                 draw_triangle_grid_neighbors,
+                draw_velocity_arrows,
             ),
         )
         .run();
