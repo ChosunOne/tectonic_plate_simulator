@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use crate::resources::gizmo_visibility::GizmoVisibility;
+use crate::resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility};
 
 #[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub enum GizmoAction {
@@ -9,6 +9,12 @@ pub enum GizmoAction {
     ToggleTriangleCenters,
     ToggleTriangleNeighbors,
     ToggleVelocityArrows,
+}
+
+#[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+pub enum MaterialAction {
+    ShowPressure,
+    ShowVelocity,
 }
 
 pub fn toggle_gizmo_visibility(
@@ -52,4 +58,25 @@ pub fn gizmo_input_map() -> InputMap<GizmoAction> {
             ButtonlikeChord::modified(ModifierKey::Control, KeyCode::Digit4),
         ),
     ])
+}
+
+#[must_use]
+pub fn material_input_map() -> InputMap<MaterialAction> {
+    InputMap::new([
+        (MaterialAction::ShowPressure, KeyCode::KeyP),
+        (MaterialAction::ShowVelocity, KeyCode::KeyV),
+    ])
+}
+
+pub fn toggle_active_material(
+    action_state: Res<ActionState<MaterialAction>>,
+    mut active_material: ResMut<ActiveMaterial>,
+) {
+    let pressed = action_state.get_just_pressed();
+    for action in pressed {
+        match action {
+            MaterialAction::ShowPressure => *active_material = ActiveMaterial::Pressure,
+            MaterialAction::ShowVelocity => *active_material = ActiveMaterial::Velocity,
+        }
+    }
 }

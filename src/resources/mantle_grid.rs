@@ -35,6 +35,10 @@ pub struct EdgeVertex;
 #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
 pub struct CellEdge;
 
+/// Vertex -> Edge adjacency marker
+#[derive(Clone, Debug, Copy, Eq, PartialEq, Hash)]
+pub struct VertexEdge;
+
 // NB: Structured this way to allow fast sharing between render and main world
 #[derive(Resource, Clone)]
 pub struct MantleGrid(Arc<MantleGridInner>);
@@ -83,6 +87,11 @@ impl MantleGrid {
     #[must_use]
     pub fn vertex_cell_adjacency(&self) -> &Adjacency<VertexCell> {
         &self.0.vertex_cell_adjacency
+    }
+
+    #[must_use]
+    pub fn vertex_edge_adjacency(&self) -> &Adjacency<VertexEdge> {
+        &self.0.vertex_edge_adjacency
     }
 }
 
@@ -371,6 +380,82 @@ impl From<&IcoSphere<()>> for Adjacency<VertexCell> {
     }
 }
 
+impl From<&IcoSphere<()>> for Adjacency<VertexEdge> {
+    fn from(sphere: &IcoSphere<()>) -> Self {
+        let points = sphere.raw_points();
+        let num_vertices = points.len();
+        let edge_vertex = Adjacency::<EdgeVertex>::from(sphere);
+        let num_edges = edge_vertex.len();
+
+        let mut vertex_edges = vec![Vec::new(); num_vertices];
+        for edge_idx in 0..num_edges {
+            let verts = edge_vertex.get(edge_idx).collect::<Vec<_>>();
+            let v_lower = verts[0];
+            let v_higher = verts[1];
+            vertex_edges[v_lower].push(edge_idx as u32);
+            vertex_edges[v_higher].push(edge_idx as u32);
+        }
+
+        for (vertex_idx, edges) in vertex_edges.iter_mut().enumerate() {
+            // Create a tangent plane to the surface, then project the
+            // direction from the central vertex to the other neighboring
+            // vertices onto the tangent plane, then sort by the angle
+            // created.
+            let vertex_pos: Vec3 = points[vertex_idx].into();
+            let vertex_normal = vertex_pos.normalize();
+
+            let up = if vertex_normal.y.abs() < 0.9 {
+                Vec3::Y
+            } else {
+                Vec3::X
+            };
+
+            let tangent_x = vertex_normal.cross(up).normalize();
+            let tangent_y = tangent_x.cross(vertex_normal).normalize();
+
+            let mut edge_angles = edges
+                .iter()
+                .map(|&edge_idx| {
+                    let verts = edge_vertex.get(edge_idx as usize).collect::<Vec<_>>();
+                    let other_vertex = if verts[0] == vertex_idx {
+                        verts[1]
+                    } else {
+                        verts[0]
+                    };
+                    let other_pos: Vec3 = points[other_vertex].into();
+                    let direction = (other_pos - vertex_pos).normalize();
+
+                    let proj_x = direction.dot(tangent_x);
+                    let proj_y = direction.dot(tangent_y);
+                    let angle = proj_y.atan2(proj_x);
+
+                    (edge_idx, angle)
+                })
+                .collect::<Vec<(u32, f32)>>();
+
+            edge_angles.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+            *edges = edge_angles.into_iter().map(|(idx, _)| idx).collect();
+        }
+
+        let mut offsets = Vec::with_capacity(num_vertices + 1);
+        let mut indices = Vec::new();
+
+        for edges in &vertex_edges {
+            offsets.push(indices.len() as u32);
+            indices.extend(edges);
+        }
+
+        offsets.push(indices.len() as u32);
+
+        Self {
+            offsets,
+            indices,
+            _t: PhantomData,
+        }
+    }
+}
+
 struct MantleGridInner {
     pub cell_adjacency: Adjacency<Cell>,
     pub cell_edge_adjacency: Adjacency<CellEdge>,
@@ -379,6 +464,7 @@ struct MantleGridInner {
     pub edge_vertex_adjacency: Adjacency<EdgeVertex>,
     pub sphere: IcoSphere<()>,
     pub vertex_cell_adjacency: Adjacency<VertexCell>,
+    pub vertex_edge_adjacency: Adjacency<VertexEdge>,
 }
 
 impl ExtractResource for MantleGrid {
@@ -403,6 +489,7 @@ impl MantleGridInner {
         let edge_cell_adjacency = Adjacency::<EdgeCell>::from(&sphere);
         let edge_vertex_adjacency = Adjacency::<EdgeVertex>::from(&sphere);
         let vertex_cell_adjacency = Adjacency::<VertexCell>::from(&sphere);
+        let vertex_edge_adjacency = Adjacency::<VertexEdge>::from(&sphere);
 
         let mut cells = Vec::new();
         for tri_idx in 0..num_triangles {
@@ -431,6 +518,7 @@ impl MantleGridInner {
             edge_vertex_adjacency,
             sphere,
             vertex_cell_adjacency,
+            vertex_edge_adjacency,
         }
     }
 

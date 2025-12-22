@@ -14,3 +14,9 @@ pub struct VertexPressureReductionBindGroup;
 
 #[derive(Component)]
 pub struct TopologyBindGroup;
+
+#[derive(Component)]
+pub struct VertexVelocityBindGroup;
+
+#[derive(Component)]
+pub struct VertexVelocityReductionBindGroup;
