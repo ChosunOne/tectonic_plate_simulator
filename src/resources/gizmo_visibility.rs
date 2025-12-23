@@ -7,4 +7,5 @@ pub struct GizmoVisibility {
     pub triangle_centers: bool,
     pub triangle_neighbors: bool,
     pub velocity_arrows: bool,
+    pub vertex_velocity_arrows: bool,
 }

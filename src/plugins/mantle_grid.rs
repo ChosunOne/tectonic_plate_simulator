@@ -93,6 +93,14 @@ fn setup_edge_topology(
         usage,
         true,
     );
+    builder.add_buffer_data(
+        grid.vertex_angle_offsets(),
+        &render_device,
+        Some("vertex_angle_offsets"),
+        ShaderStages::COMPUTE | ShaderStages::VERTEX,
+        usage,
+        true,
+    );
 
     let swappable = builder.build(&render_device, Some("topology_bind_group"));
     commands.spawn((swappable, TopologyBindGroup));

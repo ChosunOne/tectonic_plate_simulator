@@ -93,6 +93,11 @@ impl MantleGrid {
     pub fn vertex_edge_adjacency(&self) -> &Adjacency<VertexEdge> {
         &self.0.vertex_edge_adjacency
     }
+
+    #[must_use]
+    pub fn vertex_angle_offsets(&self) -> &[f32] {
+        &self.0.vertex_angle_offsets
+    }
 }
 
 /// CSR Adjacency data
@@ -404,11 +409,11 @@ impl From<&IcoSphere<()>> for Adjacency<VertexEdge> {
             let vertex_pos: Vec3 = points[vertex_idx].into();
             let vertex_normal = vertex_pos.normalize();
 
-            let up = if vertex_normal.y.abs() < 0.9 {
-                Vec3::Y
-            } else {
-                Vec3::X
-            };
+            let is_pole = vertex_normal.x.abs() < 1e-6
+                && vertex_normal.z.abs() < 1e-6
+                && (vertex_normal.y.abs() - 1.0).abs() < 1e-6;
+
+            let up = if is_pole { Vec3::X } else { Vec3::Y };
 
             let tangent_x = vertex_normal.cross(up).normalize();
             let tangent_y = tangent_x.cross(vertex_normal).normalize();
@@ -465,6 +470,7 @@ struct MantleGridInner {
     pub sphere: IcoSphere<()>,
     pub vertex_cell_adjacency: Adjacency<VertexCell>,
     pub vertex_edge_adjacency: Adjacency<VertexEdge>,
+    pub vertex_angle_offsets: Vec<f32>,
 }
 
 impl ExtractResource for MantleGrid {
@@ -490,6 +496,89 @@ impl MantleGridInner {
         let edge_vertex_adjacency = Adjacency::<EdgeVertex>::from(&sphere);
         let vertex_cell_adjacency = Adjacency::<VertexCell>::from(&sphere);
         let vertex_edge_adjacency = Adjacency::<VertexEdge>::from(&sphere);
+
+        let num_vertices = points.len();
+        let mut vertex_angle_offsets = vec![0.0f32; num_vertices];
+        let mut pole_vertices = Vec::new();
+        for vertex_idx in 0..num_vertices {
+            let vertex_pos: Vec3 = points[vertex_idx].into();
+            let vertex_normal = vertex_pos.normalize();
+
+            let is_pole = vertex_normal.x.abs() < 1e-6
+                && vertex_normal.z.abs() < 1e-6
+                && (vertex_normal.y.abs() - 1.0).abs() < 1e-6;
+
+            if is_pole {
+                pole_vertices.push(vertex_idx);
+                continue;
+            }
+
+            let edge_0_idx = vertex_edge_adjacency
+                .get(vertex_idx)
+                .next()
+                .expect("there to be an edge on the vertex");
+
+            let edge_0_verts = edge_vertex_adjacency.get(edge_0_idx).collect::<Vec<_>>();
+            let v_other = if edge_0_verts[0] == vertex_idx {
+                edge_0_verts[1]
+            } else {
+                edge_0_verts[0]
+            };
+            let other_pos: Vec3 = points[v_other].into();
+            let edge_dir = (other_pos - vertex_pos).normalize();
+
+            let edge_dir_tangent =
+                (edge_dir - vertex_normal * edge_dir.dot(vertex_normal)).normalize();
+
+            let west_raw = vertex_normal.cross(Vec3::Y);
+            if west_raw.length() < 0.05 {
+                pole_vertices.push(vertex_idx);
+                continue;
+            }
+
+            let west = west_raw.normalize();
+            let north = west.cross(vertex_normal).normalize();
+            let angle_offset = edge_dir_tangent
+                .dot(north)
+                .atan2(edge_dir_tangent.dot(west));
+
+            vertex_angle_offsets[vertex_idx] = angle_offset;
+        }
+
+        for &pole_idx in &pole_vertices {
+            let pole_pos: Vec3 = points[pole_idx].into();
+            let pole_normal = pole_pos.normalize();
+
+            let edge_0_idx = vertex_edge_adjacency
+                .get(pole_idx)
+                .next()
+                .expect("to have pole vertex edge");
+            let edge_0_verts = edge_vertex_adjacency.get(edge_0_idx).collect::<Vec<_>>();
+            let neighbor_idx = if edge_0_verts[0] == pole_idx {
+                edge_0_verts[1]
+            } else {
+                edge_0_verts[0]
+            };
+
+            let neighbor_pos: Vec3 = points[neighbor_idx].into();
+            let neighbor_normal = neighbor_pos.normalize();
+            let neighbor_west = neighbor_normal.cross(Vec3::Y).normalize();
+            let neighbor_north = neighbor_west.cross(neighbor_normal).normalize();
+
+            let edge_dir = (neighbor_pos - pole_pos).normalize();
+            let edge_dir_tangent = (edge_dir - pole_normal * edge_dir.dot(pole_normal)).normalize();
+
+            let neighbor_west_at_pole =
+                (neighbor_west - pole_normal * neighbor_west.dot(pole_normal)).normalize();
+            let neighbor_north_at_pole =
+                (neighbor_north - pole_normal * neighbor_north.dot(pole_normal)).normalize();
+
+            let angle_offset = edge_dir_tangent
+                .dot(neighbor_north_at_pole)
+                .atan2(edge_dir_tangent.dot(neighbor_west_at_pole));
+
+            vertex_angle_offsets[pole_idx] = angle_offset;
+        }
 
         let mut cells = Vec::new();
         for tri_idx in 0..num_triangles {
@@ -519,6 +608,7 @@ impl MantleGridInner {
             sphere,
             vertex_cell_adjacency,
             vertex_edge_adjacency,
+            vertex_angle_offsets,
         }
     }
 

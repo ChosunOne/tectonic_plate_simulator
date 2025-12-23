@@ -12,7 +12,7 @@ use tectonic_plate_simulator::{
     systems::{
         gizmos::{
             draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors,
-            draw_velocity_arrows,
+            draw_velocity_arrows, draw_vertex_velocity_arrows,
         },
         globe_visibility::update_globe_visibility,
         input::{
@@ -54,6 +54,7 @@ fn main() {
                 draw_triangle_grid_centers,
                 draw_triangle_grid_neighbors,
                 draw_velocity_arrows,
+                draw_vertex_velocity_arrows,
             ),
         )
         .run();

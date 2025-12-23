@@ -18,7 +18,8 @@ use bevy::{
 };
 
 use crate::components::render::{
-    SwappableBindGroup, VertexVelocityBindGroup, VertexVelocityReductionBindGroup,
+    SwappableBindGroup, TopologyBindGroup, VertexVelocityBindGroup,
+    VertexVelocityReductionBindGroup,
 };
 
 #[derive(Asset, TypePath, Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
@@ -29,9 +30,11 @@ type VertexVelocityQuery = SQuery<&'static SwappableBindGroup, With<VertexVeloci
 type VelocityBoundsQuery =
     SQuery<&'static SwappableBindGroup, With<VertexVelocityReductionBindGroup>>;
 
+type TopologyQuery = SQuery<&'static SwappableBindGroup, With<TopologyBindGroup>>;
+
 impl AsBindGroup for VelocityMaterial {
     type Data = ();
-    type Param = (VertexVelocityQuery, VelocityBoundsQuery);
+    type Param = (VertexVelocityQuery, VelocityBoundsQuery, TopologyQuery);
 
     fn bind_group_data(&self) -> Self::Data {}
 
@@ -77,6 +80,18 @@ impl AsBindGroup for VelocityMaterial {
                 },
                 count: None,
             },
+            // @group(#{MATERIAL_BIND_GROUP}) @binding(2) var<storage, read>
+            // vertex_angle_offsets: array<f32>;
+            BindGroupLayoutEntry {
+                binding: 2,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
         ]
     }
 
@@ -84,7 +99,11 @@ impl AsBindGroup for VelocityMaterial {
         &self,
         layout: &BindGroupLayout,
         render_device: &RenderDevice,
-        (vertex_velocity_query, velocity_bounds_query): &mut SystemParamItem<'_, '_, Self::Param>,
+        (vertex_velocity_query, velocity_bounds_query, topology_query): &mut SystemParamItem<
+            '_,
+            '_,
+            Self::Param,
+        >,
     ) -> Result<PreparedBindGroup, AsBindGroupError> {
         let vertex_velocity_bind_group = vertex_velocity_query
             .single()
@@ -102,6 +121,14 @@ impl AsBindGroup for VelocityMaterial {
             .get_buffer(1)
             .ok_or(AsBindGroupError::RetryNextUpdate)?;
 
+        let topology_bind_group = topology_query
+            .single()
+            .map_err(|_| AsBindGroupError::RetryNextUpdate)?;
+
+        let vertex_angle_offsets_buffer = topology_bind_group
+            .get_buffer(6)
+            .ok_or(AsBindGroupError::RetryNextUpdate)?;
+
         let bind_group = render_device.create_bind_group(
             Some("velocity_material_bind_group"),
             layout,
@@ -113,6 +140,10 @@ impl AsBindGroup for VelocityMaterial {
                 BindGroupEntry {
                     binding: 1,
                     resource: velocity_bounds_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: vertex_angle_offsets_buffer.as_entire_binding(),
                 },
             ],
         );

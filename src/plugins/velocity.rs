@@ -1,5 +1,3 @@
-use std::f32::consts::TAU;
-
 use bevy::{
     app::{App, Plugin},
     ecs::{
@@ -41,9 +39,9 @@ impl Plugin for VelocityPlugin {
 fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::with_capacity(num_edges);
-    for edge_idx in 0..num_edges {
-        let magnitude = edge_idx as f32;
-        let angle = (edge_idx as f32 / 10000.0) % TAU;
+    for _ in 0..num_edges {
+        let angle = 0.5f32;
+        let magnitude = 500.0;
         velocity_data.push([magnitude, angle]);
     }
 

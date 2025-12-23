@@ -1,8 +1,8 @@
 #import bevy_pbr::{
-        mesh_bindings::mesh,
-        mesh_functions,
-        forward_io::VertexOutput,
-        view_transformations::position_world_to_clip,
+    mesh_bindings::mesh,
+    mesh_functions,
+    forward_io::VertexOutput,
+    view_transformations::position_world_to_clip,
 }
 
 const PI: f32 = 3.14159265359;
@@ -12,19 +12,21 @@ const TAU: f32 = 6.28318530718;
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var<storage, read> vertex_velocity_bounds: array<f32, 2>;
 
+@group(#{MATERIAL_BIND_GROUP}) @binding(2) var<storage, read> vertex_angle_offsets: array<f32>;
+
 struct Vertex {
-        @builtin(instance_index) instance_index: u32,
-        @builtin(vertex_index) vertex_index: u32,
-        @location(0) position: vec3<f32>,
-        @location(1) normal: vec3<f32>,
+    @builtin(instance_index) instance_index: u32,
+    @builtin(vertex_index) vertex_index: u32,
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
 }
 
 struct VertexVelocityOutput {
-        @builtin(position) position: vec4<f32>,
-        @location(0) world_position: vec4<f32>,
-        @location(1) world_normal: vec3<f32>,
-        @location(2) normalized_magnitude: f32,
-        @location(3) angle: f32,
+    @builtin(position) position: vec4<f32>,
+    @location(0) world_position: vec4<f32>,
+    @location(1) world_normal: vec3<f32>,
+    @location(2) normalized_magnitude: f32,
+    @location(3) global_angle: f32,
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
@@ -75,14 +77,16 @@ fn vertex(vertex: Vertex) -> VertexVelocityOutput {
                 out.normalized_magnitude = 0.5;
         }
 
-        out.angle = angle;
+        let angle_offset = vertex_angle_offsets[vertex.vertex_index];
+        out.global_angle = angle + angle_offset;
 
         return out;
 }
 
 @fragment
 fn fragment(in: VertexVelocityOutput) -> @location(0) vec4<f32> {
-        let hue = (in.angle + PI) / TAU;
+        var hue = (in.global_angle + PI) / TAU;
+        hue = hue - floor(hue);
         let saturation = 1.0;
         let value = in.normalized_magnitude;
         let color = hsv_to_rgb(hue, saturation, value);

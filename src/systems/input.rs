@@ -9,6 +9,7 @@ pub enum GizmoAction {
     ToggleTriangleCenters,
     ToggleTriangleNeighbors,
     ToggleVelocityArrows,
+    ToggleVertexVelocityArrows,
 }
 
 #[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
@@ -34,6 +35,9 @@ pub fn toggle_gizmo_visibility(
             GizmoAction::ToggleVelocityArrows => {
                 visibility.velocity_arrows = !visibility.velocity_arrows;
             }
+            GizmoAction::ToggleVertexVelocityArrows => {
+                visibility.vertex_velocity_arrows = !visibility.vertex_velocity_arrows;
+            }
         }
     }
 }
@@ -56,6 +60,10 @@ pub fn gizmo_input_map() -> InputMap<GizmoAction> {
         (
             GizmoAction::ToggleVelocityArrows,
             ButtonlikeChord::modified(ModifierKey::Control, KeyCode::Digit4),
+        ),
+        (
+            GizmoAction::ToggleVertexVelocityArrows,
+            ButtonlikeChord::modified(ModifierKey::Control, KeyCode::Digit5),
         ),
     ])
 }

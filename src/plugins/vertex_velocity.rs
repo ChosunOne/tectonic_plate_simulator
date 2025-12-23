@@ -1,12 +1,17 @@
 use bevy::{
     app::{App, Plugin},
-    ecs::{query::With, world::World},
+    ecs::{
+        query::With,
+        schedule::IntoScheduleConfigs,
+        system::{Query, Res},
+        world::World,
+    },
     render::{
-        RenderApp, RenderStartup,
+        Render, RenderApp, RenderStartup, RenderSystems,
         graph::CameraDriverLabel,
         render_graph::{RenderGraph, RenderLabel},
         render_resource::{BufferUsages, ShaderStages},
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
     },
 };
 
@@ -15,7 +20,8 @@ use crate::{
         SwappableBindGroup, TopologyBindGroup, VelocityBindGroup, VertexVelocityBindGroup,
         VertexVelocityReductionBindGroup, compute_pass::ComputePass,
     },
-    resources::mantle_grid::MantleGrid,
+    plugins::swappable_bind_group::swap_bind_groups,
+    resources::{mantle_grid::MantleGrid, vertex_velocity::VertexVelocitySync},
 };
 
 pub struct VertexVelocityPlugin;
@@ -28,8 +34,17 @@ pub struct VertexVelocityReductionPassLabel;
 
 impl Plugin for VertexVelocityPlugin {
     fn build(&self, app: &mut App) {
+        let vertex_velocity_sync = VertexVelocitySync::default();
+        app.insert_resource(vertex_velocity_sync.clone());
         let render_app = app.sub_app_mut(RenderApp);
+        render_app.insert_resource(vertex_velocity_sync);
         render_app.add_systems(RenderStartup, setup_vertex_velocity);
+        render_app.add_systems(
+            Render,
+            sync_vertex_velocity_to_main
+                .in_set(RenderSystems::Cleanup)
+                .after(swap_bind_groups),
+        );
     }
 }
 
@@ -98,4 +113,32 @@ fn setup_vertex_velocity(world: &mut World) {
 
     render_graph.add_node_edge(VertexVelocityPassLabel, VertexVelocityReductionPassLabel);
     render_graph.add_node_edge(VertexVelocityReductionPassLabel, CameraDriverLabel);
+}
+
+fn sync_vertex_velocity_to_main(
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    grid: Res<MantleGrid>,
+    vertex_velocity_query: Query<&SwappableBindGroup, With<VertexVelocityBindGroup>>,
+    vertex_velocity_sync: Res<VertexVelocitySync>,
+) {
+    let Ok(vertex_velocity_bg) = vertex_velocity_query.single() else {
+        return;
+    };
+
+    let num_vertices = grid.vertex_edge_adjacency().len();
+    let buffer_size = num_vertices * std::mem::size_of::<[f32; 2]>();
+
+    let Some(vertex_velocity) = vertex_velocity_bg.read_back_buffer::<[f32; 2]>(
+        0,
+        buffer_size,
+        &render_device,
+        &render_queue,
+    ) else {
+        return;
+    };
+
+    if let Ok(mut sync_data) = vertex_velocity_sync.0.lock() {
+        *sync_data = vertex_velocity;
+    }
 }
