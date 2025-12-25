@@ -4,9 +4,10 @@ use leafwing_input_manager::{plugin::InputManagerPlugin, prelude::ActionState};
 use tectonic_plate_simulator::{
     materials::{pressure_material::PressureMaterial, velocity_material::VelocityMaterial},
     plugins::{
-        mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
-        swappable_bind_group::SwappableBindGroupPlugin, velocity::VelocityPlugin,
-        vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
+        divergence::DivergencePlugin, mantle_grid::MantleGridPlugin, phi::PhiPlugin,
+        pressure::PressurePlugin, swappable_bind_group::SwappableBindGroupPlugin,
+        velocity::VelocityPlugin, vertex_pressure::VertexPressurePlugin,
+        vertex_velocity::VertexVelocityPlugin,
     },
     resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility},
     systems::{
@@ -34,7 +35,9 @@ fn main() {
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
         .add_plugins(VelocityPlugin)
+        .add_plugins(PhiPlugin)
         .add_plugins(VertexVelocityPlugin)
+        .add_plugins(DivergencePlugin)
         .add_plugins(MaterialPlugin::<PressureMaterial>::default())
         .add_plugins(MaterialPlugin::<VelocityMaterial>::default())
         .init_resource::<GizmoVisibility>()

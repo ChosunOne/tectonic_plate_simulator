@@ -1,4 +1,6 @@
+pub mod divergence;
 pub mod mantle_grid;
+pub mod phi;
 pub mod pressure;
 pub mod swappable_bind_group;
 pub mod velocity;

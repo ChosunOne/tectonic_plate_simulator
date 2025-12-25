@@ -32,6 +32,7 @@ pub struct ComputePassBuilder {
     buffer_adders: Vec<BufferAdder>,
     entry_point: &'static str,
     external_bind_groups: HashMap<u32, BindGroupFinder>,
+    iterations: usize,
     label: Option<&'static str>,
     owned_marker: Option<MarkerInserter>,
     shader_path: Option<&'static str>,
@@ -62,6 +63,13 @@ impl ComputePassBuilder {
     #[must_use]
     pub fn entry_point(mut self, entry: &'static str) -> Self {
         self.entry_point = entry;
+        self
+    }
+
+    /// The number of times to dispatch the shader in one frame
+    #[must_use]
+    pub fn iterations(mut self, iterations: usize) -> Self {
+        self.iterations = iterations;
         self
     }
 
@@ -194,14 +202,15 @@ impl ComputePassBuilder {
         let external_bind_groups = self.external_bind_groups;
 
         ComputePass {
-            owned_bind_group,
+            entry_point: Cow::Borrowed(self.entry_point),
             external_bind_groups,
+            iterations: self.iterations,
+            label,
+            owned_bind_group,
             pipeline_id: None,
             shader,
-            entry_point: Cow::Borrowed(self.entry_point),
-            workgroups,
             state: ComputePassState::Loading { frames_waited: 0 },
-            label,
+            workgroups,
         }
     }
 }
@@ -212,6 +221,7 @@ impl Default for ComputePassBuilder {
             buffer_adders: Vec::new(),
             entry_point: "main",
             external_bind_groups: HashMap::new(),
+            iterations: 1,
             label: None,
             owned_marker: None,
             shader_path: None,
@@ -227,14 +237,15 @@ pub enum ComputePassState {
 
 #[derive(Component)]
 pub struct ComputePass {
-    owned_bind_group: Option<Entity>,
+    entry_point: Cow<'static, str>,
     external_bind_groups: HashMap<u32, BindGroupFinder>,
+    iterations: usize,
+    label: &'static str,
+    owned_bind_group: Option<Entity>,
     pipeline_id: Option<CachedComputePipelineId>,
     shader: Handle<Shader>,
-    entry_point: Cow<'static, str>,
-    workgroups: (u32, u32, u32),
     state: ComputePassState,
-    label: &'static str,
+    workgroups: (u32, u32, u32),
 }
 
 impl ComputePass {
@@ -340,32 +351,35 @@ impl Node for ComputePass {
             return Ok(());
         };
 
-        let mut pass =
-            render_context
-                .command_encoder()
-                .begin_compute_pass(&ComputePassDescriptor {
-                    label: Some(self.label),
-                    timestamp_writes: None,
-                });
+        for _ in 0..self.iterations {
+            let mut pass =
+                render_context
+                    .command_encoder()
+                    .begin_compute_pass(&ComputePassDescriptor {
+                        label: Some(self.label),
+                        timestamp_writes: None,
+                    });
 
-        pass.set_pipeline(pipeline);
+            pass.set_pipeline(pipeline);
 
-        if let Some(entity) = self.owned_bind_group {
-            let bind_group = world
-                .get::<SwappableBindGroup>(entity)
-                .expect("to find bind group");
-            pass.set_bind_group(0, bind_group.current(), &[]);
+            if let Some(entity) = self.owned_bind_group {
+                let bind_group = world
+                    .get::<SwappableBindGroup>(entity)
+                    .expect("to find bind group");
+                pass.set_bind_group(0, bind_group.current(), &[]);
+            }
+
+            for (slot, finder) in &self.external_bind_groups {
+                let entity = finder(world).expect("external bind group not found at runtime");
+                let bind_group = world
+                    .get::<SwappableBindGroup>(entity)
+                    .expect("to find bind group");
+                pass.set_bind_group(*slot, bind_group.current(), &[]);
+            }
+
+            pass.dispatch_workgroups(self.workgroups.0, self.workgroups.1, self.workgroups.2);
         }
 
-        for (slot, finder) in &self.external_bind_groups {
-            let entity = finder(world).expect("external bind group not found at runtime");
-            let bind_group = world
-                .get::<SwappableBindGroup>(entity)
-                .expect("to find bind group");
-            pass.set_bind_group(*slot, bind_group.current(), &[]);
-        }
-
-        pass.dispatch_workgroups(self.workgroups.0, self.workgroups.1, self.workgroups.2);
         Ok(())
     }
 }

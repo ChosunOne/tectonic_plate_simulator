@@ -1,22 +1,28 @@
 use bevy::ecs::component::Component;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct PressureBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VelocityBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VertexPressureBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VertexPressureReductionBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct TopologyBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VertexVelocityBindGroup;
 
-#[derive(Component)]
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VertexVelocityReductionBindGroup;
+
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct DivergenceBindGroup;
+
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct PhiBindGroup;

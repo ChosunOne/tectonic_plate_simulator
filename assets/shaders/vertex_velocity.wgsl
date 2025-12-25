@@ -12,6 +12,7 @@ const TAU: f32 = 6.283185230718;
 @group(2) @binding(3) var<storage, read> cell_vertices: array<u32>;
 @group(2) @binding(4) var<storage, read> vertex_edge_offsets: array<u32>;
 @group(2) @binding(5) var<storage, read> vertex_edge_indices: array<u32>;
+@group(2) @binding(6) var<storage, read> cell_cell_indices: array<u32>;
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
