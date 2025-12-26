@@ -25,6 +25,7 @@ use tectonic_plate_simulator::{
         VertexVelocityReductionBindGroup,
     },
     plugins::{
+        divergence::DivergencePlugin,
         mantle_grid::MantleGridPlugin,
         swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
         velocity::VelocityPlugin,
@@ -192,6 +193,7 @@ fn test_vertex_velocity_computation() {
         SwappableBindGroupPlugin,
         MantleGridPlugin,
         VelocityPlugin,
+        DivergencePlugin,
         VertexVelocityPlugin,
         VertexVelocityTestPlugin,
     ));

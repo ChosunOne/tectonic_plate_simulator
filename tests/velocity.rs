@@ -60,8 +60,8 @@ fn verify_velocity(
     };
 
     for edge_idx in 0..num_edges {
-        let expected_magnitude = edge_idx as f32;
-        let expected_angle = edge_idx as f32 / 10000.0 % TAU;
+        let expected_magnitude = 500.0;
+        let expected_angle = 0.5;
 
         let actual_magnitude = velocity[edge_idx * 2];
         let actual_angle = velocity[edge_idx * 2 + 1];

@@ -26,8 +26,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
-        let primary_phi = phi_in[edge_cell_indices[edge_idx]];
-        let secondary_phi = phi_in[edge_cell_indices[edge_idx + 1u]];
+        let primary_phi = phi_in[edge_cell_indices[edge_idx * 2u]];
+        let secondary_phi = phi_in[edge_cell_indices[edge_idx * 2u + 1u]];
 
         var angle = PI / 2.0;
         if secondary_phi > primary_phi {
