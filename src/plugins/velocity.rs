@@ -5,6 +5,7 @@ use bevy::{
         schedule::IntoScheduleConfigs,
         system::{Commands, Query, Res},
     },
+    log::debug,
     render::{
         Render, RenderApp, RenderStartup, RenderSystems,
         renderer::{RenderDevice, RenderQueue},
@@ -37,6 +38,7 @@ impl Plugin for VelocityPlugin {
 }
 
 fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
+    debug!("Setup velocity");
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::with_capacity(num_edges);
     for _ in 0..num_edges {

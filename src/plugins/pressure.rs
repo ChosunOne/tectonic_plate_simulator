@@ -22,7 +22,7 @@ impl Plugin for PressurePlugin {
 }
 
 fn setup_pressure(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
-    debug!("Loading pressure data");
+    debug!("Setup pressure");
     let num_cells = grid.cells().len();
     let mut pressure_data = Vec::with_capacity(num_cells);
     let mut total = 1.0f32;
@@ -39,5 +39,4 @@ fn setup_pressure(mut commands: Commands, grid: Res<MantleGrid>, render_device: 
     let swappable = builder.build(&render_device, Some("pressure_bind_group"));
 
     commands.spawn((swappable, PressureBindGroup));
-    debug!("Pressure data initialized");
 }

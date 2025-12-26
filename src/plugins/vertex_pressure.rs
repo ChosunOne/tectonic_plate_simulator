@@ -1,6 +1,7 @@
 use bevy::{
     app::{App, Plugin},
     ecs::{query::With, world::World},
+    log::debug,
     render::{
         RenderApp, RenderStartup,
         graph::CameraDriverLabel,
@@ -35,6 +36,7 @@ impl Plugin for VertexPressurePlugin {
 
 #[allow(clippy::cast_possible_truncation)]
 fn setup_vertex_pressure(world: &mut World) {
+    debug!("Setup vertex pressure");
     let grid = world.resource::<MantleGrid>();
     let adjacency = grid.vertex_cell_adjacency();
     let num_vertices = adjacency.len();

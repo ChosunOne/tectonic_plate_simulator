@@ -1,6 +1,7 @@
 use bevy::{
     app::{App, Plugin},
     ecs::system::{Commands, Res},
+    log::debug,
     render::{
         RenderApp, RenderStartup,
         render_resource::{BufferUsages, ShaderStages},
@@ -30,6 +31,7 @@ fn setup_edge_topology(
     grid: Res<MantleGrid>,
     render_device: Res<RenderDevice>,
 ) {
+    debug!("Setup edge topology");
     let edge_vertex_adjacency = grid.edge_vertex_adjacency();
     let edge_cell_adjacency = grid.edge_cell_adjacency();
     let cell_edge_adjacency = grid.cell_edge_adjacency();

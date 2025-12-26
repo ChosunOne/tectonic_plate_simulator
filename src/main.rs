@@ -6,7 +6,8 @@ use tectonic_plate_simulator::{
     plugins::{
         divergence::DivergencePlugin, mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
         swappable_bind_group::SwappableBindGroupPlugin, velocity::VelocityPlugin,
-        vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
+        velocity_pressure::VelocityPressurePlugin, vertex_pressure::VertexPressurePlugin,
+        vertex_velocity::VertexVelocityPlugin,
     },
     resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility},
     systems::{
@@ -34,6 +35,7 @@ fn main() {
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
         .add_plugins(VelocityPlugin)
+        .add_plugins(VelocityPressurePlugin)
         .add_plugins(DivergencePlugin)
         .add_plugins(VertexVelocityPlugin)
         .add_plugins(MaterialPlugin::<PressureMaterial>::default())

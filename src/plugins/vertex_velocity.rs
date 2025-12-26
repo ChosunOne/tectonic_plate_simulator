@@ -6,6 +6,7 @@ use bevy::{
         system::{Query, Res},
         world::World,
     },
+    log::debug,
     render::{
         Render, RenderApp, RenderStartup, RenderSystems,
         graph::CameraDriverLabel,
@@ -49,6 +50,7 @@ impl Plugin for VertexVelocityPlugin {
 }
 
 fn setup_vertex_velocity(world: &mut World) {
+    debug!("Setup vertex velocity");
     let grid = world.resource::<MantleGrid>();
     let vertex_edge_adjacency = grid.vertex_edge_adjacency();
     let num_vertices = vertex_edge_adjacency.len();
