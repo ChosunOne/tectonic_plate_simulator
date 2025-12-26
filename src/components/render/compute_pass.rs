@@ -395,7 +395,18 @@ impl Node for ComputePass {
                 let bind_group = world
                     .get::<SwappableBindGroup>(entity)
                     .expect("to find bind group");
-                pass.set_bind_group(*slot, bind_group.current(), &[]);
+                let bg = {
+                    if self.swap_each_iter {
+                        if i % 2 == 0 {
+                            bind_group.current()
+                        } else {
+                            bind_group.previous()
+                        }
+                    } else {
+                        bind_group.current()
+                    }
+                };
+                pass.set_bind_group(*slot, bg, &[]);
             }
 
             pass.dispatch_workgroups(self.workgroups.0, self.workgroups.1, self.workgroups.2);

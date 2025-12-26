@@ -296,6 +296,9 @@ impl SwappableBindGroup {
 
     #[must_use]
     pub fn previous(&self) -> &BindGroup {
+        if self.bind_groups.len() <= 1 {
+            return &self.bind_groups[self.current_index];
+        }
         &self.bind_groups[1 - self.current_index]
     }
 

@@ -1,3 +1,4 @@
+const EPS: f32 = 1e-6;
 @group(0) @binding(0) var<storage, read> pressure_in: array<f32>;
 @group(0) @binding(1) var<storage, read_write> pressure_out: array<f32>;
 
@@ -10,6 +11,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let num_cells = arrayLength(&pressure_in);
 
         if (cell_idx >= num_cells) {
+                return;
+        }
+
+        if (phi_in[cell_idx] < EPS) {
                 return;
         }
 
