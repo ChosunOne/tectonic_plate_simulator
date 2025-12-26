@@ -294,6 +294,11 @@ impl SwappableBindGroup {
         &self.bind_groups[self.current_index]
     }
 
+    #[must_use]
+    pub fn previous(&self) -> &BindGroup {
+        &self.bind_groups[1 - self.current_index]
+    }
+
     /// Swaps the bind groups and the related buffers
     pub fn swap(&mut self) {
         if self.bind_groups.len() <= 1 {

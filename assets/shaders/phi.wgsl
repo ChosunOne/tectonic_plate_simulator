@@ -1,3 +1,5 @@
+const EPS: f32 = 1.0e-6;
+
 @group(0) @binding(0) var<storage, read> phi_in: array<f32>;
 @group(0) @binding(1) var<storage, read_write> phi_out: array<f32>;
 
@@ -22,6 +24,15 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         if (cell_idx == 0u) {
+                phi_out[cell_idx] = 0.0;
+                return;
+        }
+
+        if divergence[cell_idx] < EPS {
+                return;
+        }
+
+        if phi_in[cell_idx] > EPS && abs(phi_in[cell_idx] - phi_out[cell_idx]) < EPS {
                 return;
         }
 

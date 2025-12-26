@@ -6,12 +6,12 @@ use bevy::{
     log::warn,
     platform::collections::HashMap,
     render::{
-        render_graph::Node,
+        render_graph::{Node, NodeRunError, RenderGraphContext},
         render_resource::{
             BufferInitDescriptor, BufferUsages, CachedComputePipelineId, CachedPipelineState,
             ComputePassDescriptor, ComputePipelineDescriptor, PipelineCache, ShaderStages,
         },
-        renderer::RenderDevice,
+        renderer::{RenderContext, RenderDevice},
     },
     shader::{PipelineCacheError, Shader},
 };
@@ -36,6 +36,7 @@ pub struct ComputePassBuilder {
     label: Option<&'static str>,
     owned_marker: Option<MarkerInserter>,
     shader_path: Option<&'static str>,
+    swap_each_iter: bool,
     workgroups: Option<(u32, u32, u32)>,
 }
 
@@ -157,6 +158,12 @@ impl ComputePassBuilder {
         self
     }
 
+    #[must_use]
+    pub fn swap_each_iter(mut self, swap_each_iter: bool) -> Self {
+        self.swap_each_iter = swap_each_iter;
+        self
+    }
+
     /// Builds the compute pass, creating buffers and spawning the owned bind group entity.
     ///
     /// # Panics
@@ -210,6 +217,7 @@ impl ComputePassBuilder {
             pipeline_id: None,
             shader,
             state: ComputePassState::Loading { frames_waited: 0 },
+            swap_each_iter: self.swap_each_iter,
             workgroups,
         }
     }
@@ -225,6 +233,7 @@ impl Default for ComputePassBuilder {
             label: None,
             owned_marker: None,
             shader_path: None,
+            swap_each_iter: false,
             workgroups: None,
         }
     }
@@ -245,6 +254,7 @@ pub struct ComputePass {
     pipeline_id: Option<CachedComputePipelineId>,
     shader: Handle<Shader>,
     state: ComputePassState,
+    swap_each_iter: bool,
     workgroups: (u32, u32, u32),
 }
 
@@ -336,10 +346,10 @@ impl Node for ComputePass {
 
     fn run<'w>(
         &self,
-        _graph: &mut bevy::render::render_graph::RenderGraphContext,
-        render_context: &mut bevy::render::renderer::RenderContext<'w>,
+        _graph: &mut RenderGraphContext,
+        render_context: &mut RenderContext<'w>,
         world: &'w World,
-    ) -> Result<(), bevy::render::render_graph::NodeRunError> {
+    ) -> Result<(), NodeRunError> {
         if !matches!(self.state, ComputePassState::Ready) {
             return Ok(());
         }
@@ -351,7 +361,7 @@ impl Node for ComputePass {
             return Ok(());
         };
 
-        for _ in 0..self.iterations {
+        for i in 0..self.iterations {
             let mut pass =
                 render_context
                     .command_encoder()
@@ -366,7 +376,18 @@ impl Node for ComputePass {
                 let bind_group = world
                     .get::<SwappableBindGroup>(entity)
                     .expect("to find bind group");
-                pass.set_bind_group(0, bind_group.current(), &[]);
+                let bg = {
+                    if self.swap_each_iter {
+                        if i % 2 == 0 {
+                            bind_group.current()
+                        } else {
+                            bind_group.previous()
+                        }
+                    } else {
+                        bind_group.current()
+                    }
+                };
+                pass.set_bind_group(0, bg, &[]);
             }
 
             for (slot, finder) in &self.external_bind_groups {

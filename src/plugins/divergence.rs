@@ -9,14 +9,26 @@ use bevy::{
 
 use crate::{
     components::render::{
-        DivergenceBindGroup, TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
+        DivergenceBindGroup, PhiBindGroup, PressureBindGroup, TopologyBindGroup, VelocityBindGroup,
+        compute_pass::ComputePass,
     },
-    plugins::phi::PhiPassLabel,
     resources::mantle_grid::MantleGrid,
 };
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
 pub struct DivergencePassLabel;
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
+pub struct PhiZeroPassLabel;
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
+pub struct PhiPassLabel;
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
+pub struct PhiPressurePassLabel;
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
+pub struct PhiVelocityPassLabel;
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct DivergencePlugin;
@@ -31,17 +43,65 @@ impl Plugin for DivergencePlugin {
 fn setup_divergence(world: &mut World) {
     let grid = world.resource::<MantleGrid>();
     let divergence_data = vec![0.0f32; grid.cells().len()];
+    let phi_data = vec![0.0f32; grid.cells().len()];
+    let num_cells = grid.cells().len();
+    let num_edges = grid.edge_cell_adjacency().len();
 
     let divergence_pass = ComputePass::builder()
         .label("divergence_pass")
         .shader("shaders/divergence.wgsl")
         .buffer_write(divergence_data)
-        .workgroups(grid.cells().len().div_ceil(64) as u32, 1, 1)
+        .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
         .owned_bind_group_marker(DivergenceBindGroup)
         .bind_group::<VelocityBindGroup>(1)
         .bind_group::<TopologyBindGroup>(2)
         .build(world);
+
+    let phi_zero_pass = ComputePass::builder()
+        .shader("shaders/phi_zero.wgsl")
+        .label("phi_zero_pass")
+        .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
+        .iterations(2)
+        .swap_each_iter(true)
+        .double_buffer(phi_data)
+        .owned_bind_group_marker(PhiBindGroup)
+        .build(world);
+
+    let phi_pass = ComputePass::builder()
+        .shader("shaders/phi.wgsl")
+        .label("phi_pass")
+        .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
+        .iterations(100)
+        .swap_each_iter(true)
+        .bind_group::<PhiBindGroup>(0)
+        .bind_group::<DivergenceBindGroup>(1)
+        .bind_group::<TopologyBindGroup>(2)
+        .build(world);
+
+    let phi_pressure_pass = ComputePass::builder()
+        .shader("shaders/phi_pressure.wgsl")
+        .label("phi_pressure_pass")
+        .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
+        .bind_group::<PressureBindGroup>(0)
+        .bind_group::<PhiBindGroup>(1)
+        .build(world);
+
+    let phi_velocity_pass = ComputePass::builder()
+        .shader("shaders/phi_velocity.wgsl")
+        .label("phi_velocity_pass")
+        .workgroups(num_edges.div_ceil(64) as u32, 1, 1)
+        .bind_group::<VelocityBindGroup>(0)
+        .bind_group::<PhiBindGroup>(1)
+        .bind_group::<TopologyBindGroup>(2)
+        .build(world);
     let mut render_graph = world.resource_mut::<RenderGraph>();
     render_graph.add_node(DivergencePassLabel, divergence_pass);
-    render_graph.add_node_edge(DivergencePassLabel, PhiPassLabel);
+    render_graph.add_node(PhiZeroPassLabel, phi_zero_pass);
+    render_graph.add_node(PhiPassLabel, phi_pass);
+    render_graph.add_node(PhiPressurePassLabel, phi_pressure_pass);
+    render_graph.add_node(PhiVelocityPassLabel, phi_velocity_pass);
+    render_graph.add_node_edge(DivergencePassLabel, PhiZeroPassLabel);
+    render_graph.add_node_edge(PhiZeroPassLabel, PhiPassLabel);
+    render_graph.add_node_edge(PhiPassLabel, PhiPressurePassLabel);
+    render_graph.add_node_edge(PhiPressurePassLabel, PhiVelocityPassLabel);
 }

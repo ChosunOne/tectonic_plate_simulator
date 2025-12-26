@@ -20,7 +20,7 @@ use crate::{
         SwappableBindGroup, TopologyBindGroup, VelocityBindGroup, VertexVelocityBindGroup,
         VertexVelocityReductionBindGroup, compute_pass::ComputePass,
     },
-    plugins::swappable_bind_group::swap_bind_groups,
+    plugins::{divergence::PhiVelocityPassLabel, swappable_bind_group::swap_bind_groups},
     resources::{mantle_grid::MantleGrid, vertex_velocity::VertexVelocitySync},
 };
 
@@ -111,6 +111,7 @@ fn setup_vertex_velocity(world: &mut World) {
     render_graph.add_node(VertexVelocityPassLabel, vertex_velocity_pass);
     render_graph.add_node(VertexVelocityReductionPassLabel, reduction_pass);
 
+    render_graph.add_node_edge(PhiVelocityPassLabel, VertexVelocityPassLabel);
     render_graph.add_node_edge(VertexVelocityPassLabel, VertexVelocityReductionPassLabel);
     render_graph.add_node_edge(VertexVelocityReductionPassLabel, CameraDriverLabel);
 }
