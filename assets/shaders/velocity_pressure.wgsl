@@ -1,5 +1,5 @@
 const PI: f32 = 3.14159265359;
-const DT: f32 = 0.01666666667;
+const DT: f32 = 0.0001666666667;
 const RHO: f32 = 1.0;
 const EPS: f32 = 1e-6;
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
@@ -29,7 +29,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let primary_pressure = pressure_in[edge_cell_indices[edge_idx * 2u]];
         let secondary_pressure = pressure_in[edge_cell_indices[edge_idx * 2u + 1u]];
 
-        if (primary_pressure < EPS && secondary_pressure < EPS) {
+        if abs(primary_pressure - secondary_pressure) < EPS {
                 return;
         }
 

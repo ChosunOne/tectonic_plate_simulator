@@ -14,7 +14,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
-        if (phi_in[cell_idx] < EPS) {
+        if (abs(phi_in[cell_idx]) < EPS) {
                 return;
         }
 

@@ -30,7 +30,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let primary_phi = phi_in[edge_cell_indices[edge_idx * 2u]];
         let secondary_phi = phi_in[edge_cell_indices[edge_idx * 2u + 1u]];
 
-        if primary_phi < EPS && secondary_phi < EPS {
+        if abs(primary_phi - secondary_phi) < EPS {
                 return;
         }
 

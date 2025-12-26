@@ -28,7 +28,7 @@ fn setup_pressure(mut commands: Commands, grid: Res<MantleGrid>, render_device: 
     let mut total = 1.0f32;
     for _ in 0..num_cells {
         pressure_data.push(total);
-        total += 1.0;
+        // total += 0.1;
     }
 
     let pressure_buffer =
