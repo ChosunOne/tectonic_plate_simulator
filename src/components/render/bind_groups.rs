@@ -25,4 +25,10 @@ pub struct VertexVelocityReductionBindGroup;
 pub struct DivergenceBindGroup;
 
 #[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct VertexDivergenceBindGroup;
+
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct VertexDivergenceReductionBindGroup;
+
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct PhiBindGroup;

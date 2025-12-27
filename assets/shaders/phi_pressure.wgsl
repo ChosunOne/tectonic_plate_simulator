@@ -18,5 +18,5 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
-        pressure_out[cell_idx] += phi_in[cell_idx];
+        pressure_out[cell_idx] = phi_in[cell_idx];
 }

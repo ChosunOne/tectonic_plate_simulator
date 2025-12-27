@@ -82,11 +82,15 @@ pub fn draw_velocity_arrows(
         return;
     };
 
+    if velocity.is_empty() {
+        return;
+    }
+
     let points = grid.sphere().raw_points();
     let edge_vertex_adjacency = grid.edge_vertex_adjacency();
     let edge_cell_adjacency = grid.edge_cell_adjacency();
 
-    let scale = 0.00005;
+    let scale = 1.0;
 
     for edge_idx in 0..edge_vertex_adjacency.len() {
         let edge_verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
@@ -132,11 +136,15 @@ pub fn draw_vertex_velocity_arrows(
         return;
     };
 
+    if vertex_velocity.is_empty() {
+        return;
+    }
+
     let points = grid.sphere().raw_points();
     let vertex_edge_adjacency = grid.vertex_edge_adjacency();
     let edge_vertex_adjacency = grid.edge_vertex_adjacency();
 
-    let scale = 0.00005;
+    let scale = 1.0;
 
     for vertex_idx in 0..vertex_edge_adjacency.len() {
         let [magnitude, angle] = vertex_velocity[vertex_idx];

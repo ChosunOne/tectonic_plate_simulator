@@ -5,4 +5,5 @@ pub enum ActiveMaterial {
     #[default]
     Pressure,
     Velocity,
+    Divergence,
 }

@@ -41,9 +41,9 @@ fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: 
     debug!("Setup velocity");
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::with_capacity(num_edges);
-    for _ in 0..num_edges {
-        let angle = 0.5f32;
-        let magnitude = 500.0;
+    for i in 0..num_edges {
+        let angle = if i == 1000 { 1.5 } else { 0.0 };
+        let magnitude = if i == 1000 { 0.1 } else { 0.01f32 };
         velocity_data.push([magnitude, angle]);
     }
 

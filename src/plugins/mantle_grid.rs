@@ -37,6 +37,7 @@ fn setup_edge_topology(
     let cell_edge_adjacency = grid.cell_edge_adjacency();
     let vertex_edge_adjacency = grid.vertex_edge_adjacency();
     let cell_adjacency = grid.cell_adjacency();
+    let vertex_cell_adjacency = grid.vertex_cell_adjacency();
 
     let cell_vertices = grid
         .cells()
@@ -108,6 +109,22 @@ fn setup_edge_topology(
         cell_adjacency.indices(),
         &render_device,
         Some("cell_cell_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        vertex_cell_adjacency.offsets(),
+        &render_device,
+        Some("vertex_cell_offsets"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        vertex_cell_adjacency.indices(),
+        &render_device,
+        Some("vertex_cell_indices"),
         visibility,
         usage,
         true,

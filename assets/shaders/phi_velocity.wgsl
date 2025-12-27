@@ -35,7 +35,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         var angle = PI / 2.0;
-        if secondary_phi < primary_phi {
+        if primary_phi < secondary_phi {
                 angle += PI;
         }
 
@@ -43,6 +43,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let vel = velocity_out[edge_idx];
         let new_mag = sqrt(mag * mag + vel.x * vel.x + 2 * mag * vel.x * cos(angle - vel.y));
-        let new_angle = vel.y + atan2(mag * sin(angle - vel.y), vel.x + mag * cos(angle - vel.y));
+        let new_angle = (vel.y + atan2(mag * sin(angle - vel.y), vel.x + mag * cos(angle - vel.y))) % (2 * PI);
         velocity_out[edge_idx] = vec2<f32>(new_mag, new_angle);
 }

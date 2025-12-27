@@ -2,8 +2,11 @@ use bevy::{core_pipeline::Skybox, prelude::*};
 use bevy_panorbit_camera::PanOrbitCamera;
 
 use crate::{
-    components::globe::{PressureGlobe, VelocityGlobe},
-    materials::{pressure_material::PressureMaterial, velocity_material::VelocityMaterial},
+    components::globe::{DivergenceGlobe, PressureGlobe, VelocityGlobe},
+    materials::{
+        divergence_material::DivergenceMaterial, pressure_material::PressureMaterial,
+        velocity_material::VelocityMaterial,
+    },
     resources::mantle_grid::MantleGrid,
 };
 
@@ -13,6 +16,7 @@ pub fn setup(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut pressure_materials: ResMut<Assets<PressureMaterial>>,
     mut velocity_materials: ResMut<Assets<VelocityMaterial>>,
+    mut divergence_materials: ResMut<Assets<DivergenceMaterial>>,
     asset_server: Res<AssetServer>,
     grid: Res<MantleGrid>,
 ) {
@@ -35,11 +39,19 @@ pub fn setup(
     ));
 
     commands.spawn((
-        Mesh3d(mesh_handle),
+        Mesh3d(mesh_handle.clone()),
         MeshMaterial3d(velocity_materials.add(VelocityMaterial)),
         Transform::from_xyz(0.0, 0.0, 0.0),
         Visibility::Hidden,
         VelocityGlobe,
+    ));
+
+    commands.spawn((
+        Mesh3d(mesh_handle),
+        MeshMaterial3d(divergence_materials.add(DivergenceMaterial)),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Visibility::Hidden,
+        DivergenceGlobe,
     ));
 
     // Spawn the camera

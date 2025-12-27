@@ -21,7 +21,10 @@ use crate::{
         SwappableBindGroup, TopologyBindGroup, VelocityBindGroup, VertexVelocityBindGroup,
         VertexVelocityReductionBindGroup, compute_pass::ComputePass,
     },
-    plugins::{divergence::PhiVelocityPassLabel, swappable_bind_group::swap_bind_groups},
+    plugins::{
+        divergence::{PhiVelocityPassLabel, setup_divergence},
+        swappable_bind_group::swap_bind_groups,
+    },
     resources::{mantle_grid::MantleGrid, vertex_velocity::VertexVelocitySync},
 };
 
@@ -39,7 +42,7 @@ impl Plugin for VertexVelocityPlugin {
         app.insert_resource(vertex_velocity_sync.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(vertex_velocity_sync);
-        render_app.add_systems(RenderStartup, setup_vertex_velocity);
+        render_app.add_systems(RenderStartup, setup_vertex_velocity.after(setup_divergence));
         render_app.add_systems(
             Render,
             sync_vertex_velocity_to_main

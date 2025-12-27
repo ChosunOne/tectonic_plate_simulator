@@ -1,6 +1,6 @@
 use bevy::{
     app::{App, Plugin},
-    ecs::{schedule::IntoScheduleConfigs, world::World},
+    ecs::world::World,
     log::debug,
     render::{
         RenderApp, RenderStartup,
@@ -13,7 +13,6 @@ use crate::{
         DivergenceBindGroup, PhiBindGroup, PressureBindGroup, TopologyBindGroup, VelocityBindGroup,
         compute_pass::ComputePass,
     },
-    plugins::velocity_pressure::{VelocityPressurePassLabel, setup_velocity_pressure},
     resources::mantle_grid::MantleGrid,
 };
 
@@ -38,14 +37,11 @@ pub struct DivergencePlugin;
 impl Plugin for DivergencePlugin {
     fn build(&self, app: &mut App) {
         let render_app = app.sub_app_mut(RenderApp);
-        render_app.add_systems(
-            RenderStartup,
-            setup_divergence.after(setup_velocity_pressure),
-        );
+        render_app.add_systems(RenderStartup, setup_divergence);
     }
 }
 
-fn setup_divergence(world: &mut World) {
+pub fn setup_divergence(world: &mut World) {
     debug!("Setup divergence plugin");
     let grid = world.resource::<MantleGrid>();
     let divergence_data = vec![0.0f32; grid.cells().len()];
@@ -77,7 +73,7 @@ fn setup_divergence(world: &mut World) {
         .shader("shaders/phi.wgsl")
         .label("phi_pass")
         .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
-        .iterations(200)
+        .iterations(2)
         .swap_each_iter(true)
         .bind_group::<PhiBindGroup>(0)
         .bind_group::<DivergenceBindGroup>(1)
@@ -106,7 +102,6 @@ fn setup_divergence(world: &mut World) {
     render_graph.add_node(PhiPassLabel, phi_pass);
     render_graph.add_node(PhiPressurePassLabel, phi_pressure_pass);
     render_graph.add_node(PhiVelocityPassLabel, phi_velocity_pass);
-    render_graph.add_node_edge(VelocityPressurePassLabel, DivergencePassLabel);
     render_graph.add_node_edge(DivergencePassLabel, PhiZeroPassLabel);
     render_graph.add_node_edge(PhiZeroPassLabel, PhiPassLabel);
     render_graph.add_node_edge(PhiPassLabel, PhiPressurePassLabel);

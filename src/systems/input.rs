@@ -16,6 +16,7 @@ pub enum GizmoAction {
 pub enum MaterialAction {
     ShowPressure,
     ShowVelocity,
+    ShowDivergence,
 }
 
 pub fn toggle_gizmo_visibility(
@@ -73,6 +74,7 @@ pub fn material_input_map() -> InputMap<MaterialAction> {
     InputMap::new([
         (MaterialAction::ShowPressure, KeyCode::KeyP),
         (MaterialAction::ShowVelocity, KeyCode::KeyV),
+        (MaterialAction::ShowDivergence, KeyCode::KeyD),
     ])
 }
 
@@ -85,6 +87,7 @@ pub fn toggle_active_material(
         match action {
             MaterialAction::ShowPressure => *active_material = ActiveMaterial::Pressure,
             MaterialAction::ShowVelocity => *active_material = ActiveMaterial::Velocity,
+            MaterialAction::ShowDivergence => *active_material = ActiveMaterial::Divergence,
         }
     }
 }

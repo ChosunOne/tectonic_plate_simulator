@@ -24,12 +24,7 @@ impl Plugin for PressurePlugin {
 fn setup_pressure(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
     debug!("Setup pressure");
     let num_cells = grid.cells().len();
-    let mut pressure_data = Vec::with_capacity(num_cells);
-    let mut total = 1.0f32;
-    for _ in 0..num_cells {
-        pressure_data.push(total);
-        // total += 0.1;
-    }
+    let pressure_data = vec![0.0f32; num_cells];
 
     let pressure_buffer =
         DoubleBuffer::new(&render_device, &pressure_data, Some("pressure_data_buffer"));

@@ -1,9 +1,7 @@
-const EPS: f32 = 1.0e-6;
-
-@group(0) @binding(0) var<storage, read> phi_in: array<f32>;
-@group(0) @binding(1) var<storage, read_write> phi_out: array<f32>;
+@group(0) @binding(0) var<storage, read_write> vertex_divergence: array<f32>;
 
 @group(1) @binding(0) var<storage, read_write> divergence: array<f32>;
+
 
 @group(2) @binding(0) var<storage, read> edge_vertex_indices: array<u32>;
 @group(2) @binding(1) var<storage, read> edge_cell_indices: array<u32>;
@@ -18,24 +16,20 @@ const EPS: f32 = 1.0e-6;
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-        let cell_idx = global_id.x;
-        let num_cells = arrayLength(&phi_in);
-
-        if (cell_idx >= num_cells) {
+        let vertex_idx = global_id.x;
+        let num_vertices = arrayLength(&vertex_divergence);
+        if (vertex_idx >= num_vertices) {
                 return;
         }
 
-        if (cell_idx == 0u) {
-                phi_out[cell_idx] = 0.0;
-                return;
+        let start = vertex_cell_offsets[vertex_idx];
+        let end = vertex_cell_offsets[vertex_idx + 1u];
+
+        var sum = 0.0;
+        for (var i = start; i < end; i++) {
+                let cell_idx = vertex_cell_indices[i];
+                sum += divergence[cell_idx];
         }
 
-        var phi: f32 = -divergence[cell_idx];
-        for (var i: u32 = 0u; i < 3u; i++) {
-                let neighbor_idx = cell_cell_indices[cell_idx * 3u + i];
-                phi += phi_in[neighbor_idx];
-        }
-
-        phi = phi / 3.0;
-        phi_out[cell_idx] = phi;
+        vertex_divergence[vertex_idx] = sum / f32(end - start);
 }
