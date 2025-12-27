@@ -25,11 +25,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
-        if (cell_idx == 0u) {
-                phi_out[cell_idx] = 0.0;
-                return;
-        }
-
         var phi: f32 = -divergence[cell_idx];
         for (var i: u32 = 0u; i < 3u; i++) {
                 let neighbor_idx = cell_cell_indices[cell_idx * 3u + i];

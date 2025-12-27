@@ -73,7 +73,7 @@ pub fn setup_divergence(world: &mut World) {
         .shader("shaders/phi.wgsl")
         .label("phi_pass")
         .workgroups(num_cells.div_ceil(64) as u32, 1, 1)
-        .iterations(2)
+        .iterations(200)
         .swap_each_iter(true)
         .bind_group::<PhiBindGroup>(0)
         .bind_group::<DivergenceBindGroup>(1)

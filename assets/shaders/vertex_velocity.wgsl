@@ -59,7 +59,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let avg_y = sum_y / f32(num_edges);
 
         let avg_mag = sqrt(avg_x * avg_x + avg_y * avg_y);
-        let avg_angle = atan2(avg_y, avg_x);
+        let avg_angle = atan2(avg_y, avg_x) % (2.0 * PI);
 
         vertex_velocity[vertex_idx] = vec2<f32>(avg_mag, avg_angle);
 }

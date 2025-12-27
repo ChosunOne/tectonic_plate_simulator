@@ -26,7 +26,8 @@ struct VertexVelocityOutput {
     @location(0) world_position: vec4<f32>,
     @location(1) world_normal: vec3<f32>,
     @location(2) normalized_magnitude: f32,
-    @location(3) global_angle: f32,
+    @location(3) velocity_x: f32,
+    @location(4) velocity_y: f32,
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
@@ -78,14 +79,17 @@ fn vertex(vertex: Vertex) -> VertexVelocityOutput {
         }
 
         let angle_offset = vertex_angle_offsets[vertex.vertex_index];
-        out.global_angle = angle + angle_offset;
+        let global_angle = angle + angle_offset;
+        out.velocity_x = cos(global_angle);
+        out.velocity_y = sin(global_angle);
 
         return out;
 }
 
 @fragment
 fn fragment(in: VertexVelocityOutput) -> @location(0) vec4<f32> {
-        var hue = (in.global_angle + PI) / TAU;
+        let angle = atan2(in.velocity_y, in.velocity_x);
+        var hue = (angle + PI) / TAU;
         hue = hue - floor(hue);
         let saturation = 1.0;
         let value = in.normalized_magnitude;
