@@ -1,7 +1,8 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const VISCOSITY: f32 = 0.1;
+const VISCOSITY: f32 = 0.5;
 const DT: f32 = 0.01666666667;
+const EPS: f32 = 1e-6;
 
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
@@ -18,8 +19,18 @@ const DT: f32 = 0.01666666667;
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 
 fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
+        if vel_a.x < EPS {
+                return vel_b;
+        }
+        if vel_b.x < EPS {
+                return vel_a;
+        }
         let new_mag = sqrt((vel_a.x * vel_a.x + vel_b.x * vel_b.x + 2 * vel_a.x * vel_b.x * cos(vel_b.y - vel_a.y)));
-        let new_angle = (vel_a.y + atan2(vel_b.x * sin(vel_b.y - vel_a.y), vel_a.x + vel_b.x * cos(vel_b.y - vel_a.y))) % TAU;
+        if new_mag < EPS {
+                return vec2<f32>(0.0, 0.0);
+        }
+        var new_angle = (vel_a.y + atan2(vel_b.x * sin(vel_b.y - vel_a.y), vel_a.x + vel_b.x * cos(vel_b.y - vel_a.y)));
+        new_angle = (new_angle + TAU) % TAU;
         return vec2<f32>(new_mag, new_angle);
 }
 
@@ -37,7 +48,11 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
 
         var angle_offset = 0.0;
         // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees so that the only correction left depends on the number of edges connected to the shared vertex.
-        if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u] {
+
+        if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u] && primary {
+                angle_offset += PI;
+        }
+        if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u + 1u] && !primary {
                 angle_offset += PI;
         }
 
@@ -82,7 +97,7 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
                 return angle_offset;
         }
         angle_offset += angle_sign * (PI - TAU / 5.0) / 2.0;
-        return angle_offset;
+        return (angle_offset + TAU) % TAU;
 }
 
 @compute @workgroup_size(64)
@@ -129,10 +144,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
                 avg_vel = add_velocity(avg_vel, adjusted_velocity);
         }
-        avg_vel.x = 0.25 * avg_vel.x;
+        avg_vel.x *= 0.25;
 
-        let neg_velocity = vec2<f32>(-1.0 * velocity_in[edge_idx].x, velocity_in[edge_idx].y);
+        let neg_velocity = vec2<f32>(velocity_in[edge_idx].x, velocity_in[edge_idx].y + PI);
         var avg_diff = add_velocity(avg_vel, neg_velocity);
         avg_diff.x *= DT * VISCOSITY;
+        if abs(avg_diff.x) < EPS {
+                return;
+        }
         velocity_out[edge_idx] = add_velocity(velocity_in[edge_idx], avg_diff);
 }

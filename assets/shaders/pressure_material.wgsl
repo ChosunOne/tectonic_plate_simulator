@@ -44,8 +44,10 @@ fn vertex(vertex: Vertex) -> VertexPressureOutput {
                 let sign = sign(deviation);
                 let log_dev = sign * log(1.0 + abs(deviation)) / log(1.0 + max_deviation);
                 out.normalized_pressure = 0.5 + 0.5 * log_dev;
-        } else {
+        } else if max_deviation == 0.0 {
                 out.normalized_pressure = 0.5;
+        } else {
+                out.normalized_pressure = -1.0;
         }
 
         return out;
@@ -55,9 +57,11 @@ fn pressure_to_color(normalized_pressure: f32) -> vec3<f32> {
         if normalized_pressure < 0.5 {
                 let t = normalized_pressure * 2.0;
                 return vec3<f32>(0.0, 0.0, 1.0 - t);
-        } else {
+        } else if normalized_pressure >= 0.0 {
                 let t = (normalized_pressure - 0.5) * 2.0;
                 return vec3<f32>(t, 0.0, 0.0);
+        } else {
+                return vec3<f32>(1.0, 0.0, 1.0);
         }
 }
 
