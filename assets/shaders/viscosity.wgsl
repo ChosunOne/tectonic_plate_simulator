@@ -77,7 +77,7 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
         // Hexagonal Cell
         if total_edges == 18 {
                 angle_offset += angle_sign * (TAU / 6.0);
-                return angle_offset;
+                return (angle_offset + TAU) % TAU;
         }
 
         // Pentagonal Cell
@@ -85,16 +85,16 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
                 // if the vertex is the center of a pentagon, then the angle is 72 degrees
                 if num_left_edges == 5 {
                         angle_offset += angle_sign * (TAU / 5.0);
-                        return angle_offset;
+                        return (angle_offset + TAU) % TAU;
                 }
                 // otherwise the angle is 54 degrees
                 angle_offset += angle_sign * (PI - TAU / 5.0) / 2.0;
-                return angle_offset;
+                return (angle_offset + TAU) % TAU;
         }
 
         if num_right_edges == 5 {
                 angle_offset += angle_sign * (TAU / 5.0);
-                return angle_offset;
+                return (angle_offset + TAU) % TAU;
         }
         angle_offset += angle_sign * (PI - TAU / 5.0) / 2.0;
         return (angle_offset + TAU) % TAU;
@@ -125,7 +125,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let angle_offset = get_angle_offset(edge_idx, primary_edge_idx, true);
 
                 let primary_edge_velocity = velocity_in[primary_edge_idx];
-                let adjusted_velocity = vec2<f32>(primary_edge_velocity.x, (primary_edge_velocity.y + angle_offset) % TAU);
+                let adjusted_velocity = vec2<f32>(primary_edge_velocity.x, ((primary_edge_velocity.y + angle_offset) + TAU) % TAU);
 
                 avg_vel = add_velocity(avg_vel, adjusted_velocity);
         }
