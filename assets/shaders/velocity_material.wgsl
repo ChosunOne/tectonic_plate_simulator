@@ -72,10 +72,14 @@ fn vertex(vertex: Vertex) -> VertexVelocityOutput {
         let max_mag = vertex_velocity_bounds[1];
         let range = max_mag - min_mag;
 
-        if range > 0.0 {
+        if range > 0.001 {
                 out.normalized_magnitude = (magnitude - min_mag) / range;
-        } else {
-                out.normalized_magnitude = 0.5;
+        }
+        else if range > 0.0 {
+                out.normalized_magnitude = 0.0;
+        }
+        else {
+                out.normalized_magnitude = -1.0;
         }
 
         let angle_offset = vertex_angle_offsets[vertex.vertex_index];
@@ -88,6 +92,9 @@ fn vertex(vertex: Vertex) -> VertexVelocityOutput {
 
 @fragment
 fn fragment(in: VertexVelocityOutput) -> @location(0) vec4<f32> {
+        if in.normalized_magnitude < 0.0 {
+                return vec4<f32>(1.0, 0.0, 1.0, 1.0);
+        }
         let angle = atan2(in.velocity_y, in.velocity_x);
         var hue = (angle + PI) / TAU;
         hue = hue - floor(hue);

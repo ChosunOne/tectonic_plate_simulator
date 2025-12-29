@@ -15,6 +15,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         if (abs(phi_in[cell_idx]) < EPS) {
+                pressure_out[cell_idx] = 0.99 * pressure_in[cell_idx];
                 return;
         }
 

@@ -1,6 +1,6 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const VISCOSITY: f32 = 0.5;
+const VISCOSITY: f32 = 1.5;
 const DT: f32 = 0.01666666667;
 const EPS: f32 = 1e-6;
 
@@ -25,13 +25,21 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if vel_b.x < EPS {
                 return vel_a;
         }
-        let new_mag = sqrt((vel_a.x * vel_a.x + vel_b.x * vel_b.x + 2 * vel_a.x * vel_b.x * cos(vel_b.y - vel_a.y)));
+
+        let ax = vel_a.x * cos(vel_a.y);
+        let ay = vel_a.x * sin(vel_a.y);
+        let bx = vel_b.x * cos(vel_b.y);
+        let by = vel_b.x * sin(vel_b.y);
+
+        let rx = ax + bx;
+        let ry = ay + by;
+
+        let new_mag = sqrt(rx * rx + ry * ry);
         if new_mag < EPS {
                 return vec2<f32>(0.0, 0.0);
         }
-        var new_angle = (vel_a.y + atan2(vel_b.x * sin(vel_b.y - vel_a.y), vel_a.x + vel_b.x * cos(vel_b.y - vel_a.y)));
-        new_angle = (new_angle + TAU) % TAU;
-        return vec2<f32>(new_mag, new_angle);
+        let new_angle = atan2(ry, rx);
+        return vec2<f32>(new_mag, (new_angle + TAU) % TAU);
 }
 
 fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {

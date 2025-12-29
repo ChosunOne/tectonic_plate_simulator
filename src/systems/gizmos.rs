@@ -147,7 +147,7 @@ pub fn draw_vertex_velocity_arrows(
     let scale = 1.0;
 
     for vertex_idx in 0..vertex_edge_adjacency.len() {
-        let [magnitude, angle] = vertex_velocity[vertex_idx];
+        let [mut magnitude, angle] = vertex_velocity[vertex_idx];
         let vertex_pos: Vec3 = points[vertex_idx].into();
         let vertex_normal = vertex_pos.normalize();
 
@@ -170,8 +170,16 @@ pub fn draw_vertex_velocity_arrows(
 
         let direction = angle.cos() * tangent_x + angle.sin() * tangent_y;
 
+        let color = if magnitude > 0.01 {
+            Color::srgb(0.0, 0.0, 1.0)
+        } else {
+            Color::srgb(1.0, 0.0, 0.0)
+        };
+
+        magnitude = magnitude.max(0.02);
+
         let arrow_end = vertex_pos + direction * magnitude * scale;
 
-        gizmos.arrow(vertex_pos, arrow_end, Color::srgb(0.0, 0.0, 1.0));
+        gizmos.arrow(vertex_pos, arrow_end, color);
     }
 }
