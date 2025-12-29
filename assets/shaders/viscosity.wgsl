@@ -150,6 +150,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         var avg_diff = add_velocity(avg_vel, neg_velocity);
         avg_diff.x *= DT * VISCOSITY;
         if abs(avg_diff.x) < EPS {
+                velocity_out[edge_idx] = velocity_in[edge_idx];
                 return;
         }
         velocity_out[edge_idx] = add_velocity(velocity_in[edge_idx], avg_diff);
