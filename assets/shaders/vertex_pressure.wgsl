@@ -19,7 +19,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         var sum = 0.0;
         for (var i = start; i < end; i++) {
                 let cell_idx = vertex_cell_indices[i];
-                sum += pressure_in[cell_idx];
+                sum += pressure_out[cell_idx];
         }
 
         vertex_pressures[vertex_idx] = sum / f32(end - start);
