@@ -140,7 +140,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let angle_offset = get_angle_offset(edge_idx, secondary_edge_idx, false) + PI;
 
                 let secondary_edge_velocity = velocity_in[secondary_edge_idx];
-                let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, (secondary_edge_velocity.y + angle_offset) % TAU);
+                let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, ((secondary_edge_velocity.y + angle_offset) + TAU) % TAU);
 
                 avg_vel = add_velocity(avg_vel, adjusted_velocity);
         }
