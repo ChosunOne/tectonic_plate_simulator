@@ -6,3 +6,4 @@ pub mod velocity;
 pub mod vertex_divergence;
 pub mod vertex_pressure;
 pub mod vertex_velocity;
+pub mod viscosity;
