@@ -1,4 +1,4 @@
-const EPS: f32 = 1e-3;
+const EPS: f32 = 1e-10;
 @group(0) @binding(0) var<storage, read> pressure_in: array<f32>;
 @group(0) @binding(1) var<storage, read_write> pressure_out: array<f32>;
 
@@ -15,9 +15,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         if (abs(phi_in[cell_idx]) < EPS) {
-                pressure_out[cell_idx] = 0.99 * pressure_in[cell_idx];
+                pressure_out[cell_idx] = 0.999 * pressure_in[cell_idx];
                 return;
         }
 
-        pressure_out[cell_idx] = 0.99 * pressure_out[cell_idx] + phi_in[cell_idx];
+        pressure_out[cell_idx] = 0.999 * pressure_out[cell_idx] + 0.001 * phi_in[cell_idx];
 }

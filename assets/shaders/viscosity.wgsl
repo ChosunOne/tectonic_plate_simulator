@@ -1,8 +1,8 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const VISCOSITY: f32 = 0.001;
+const VISCOSITY: f32 = 0.1;
 const DT: f32 = 0.01666666667;
-const EPS: f32 = 1e-6;
+const EPS: f32 = 1e-10;
 
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
@@ -18,6 +18,10 @@ const EPS: f32 = 1e-6;
 @group(1) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
+
+fn mod_tau(theta: f32) -> f32 {
+        return (theta + TAU) % TAU;
+}
 
 fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if vel_a.x < EPS {
@@ -39,24 +43,77 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if new_mag < EPS {
                 return vec2<f32>(0.0, 0.0);
         }
-        let new_angle = atan2(ry, rx);
-        return vec2<f32>(new_mag, (new_angle + TAU) % TAU);
+        let new_angle = mod_tau(atan2(ry, rx));
+        return vec2<f32>(new_mag, new_angle);
+}
+
+// Computes the angles between three edges. The order of the angles
+// is (left_base_angle, right_base_angle, apex_angle)
+fn compute_angles(base: u32, left: u32, right: u32) -> vec3<f32> {
+        let a = edge_lengths[base];
+        let b = edge_lengths[left];
+        let c = edge_lengths[right];
+
+        let a_squared = a * a;
+        let b_squared = b * b;
+        let c_squared = c * c;
+
+        let left_base_angle = acos(
+                clamp((a_squared + b_squared - c_squared) /
+                (2 * a * b), -1.0, 1.0));
+        let right_base_angle = acos(clamp((a_squared + c_squared - b_squared) / (2 * a * c), -1.0, 1.0));
+        let apex_angle = acos(clamp((b_squared + c_squared - a_squared) / (2 * b * c), -1.0, 1.0));
+
+        return vec3<f32>(left_base_angle, right_base_angle, apex_angle);
+}
+
+// Gets the adjacent edges to this one in the indicated cell.
+// Returns (left_edge, right_edge)
+fn get_adjacent_edges(edge: u32, cell: u32) -> vec2<u32> {
+        var left_edge = edge;
+        var right_edge = edge;
+
+        let left_vertex = edge_vertex_indices[edge * 2u];
+        let right_vertex = edge_vertex_indices[edge * 2u + 1u];
+
+        for (var i = 0u; i < 3u; i++) {
+                let other_edge = cell_edge_indices[cell * 3u + i];
+                if other_edge == edge {
+                        continue;
+                }
+                let other_left_vertex = edge_vertex_indices[other_edge * 2u];
+                let other_right_vertex = edge_vertex_indices[other_edge * 2u + 1u];
+                if other_left_vertex == left_vertex || other_right_vertex == left_vertex {
+                        left_edge = other_edge;
+                } else if other_left_vertex == right_vertex || other_right_vertex == right_vertex {
+                        right_edge = other_edge;
+                }
+        }
+
+        return vec2<u32>(left_edge, right_edge);
 }
 
 fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
-        var left_vertex = edge_vertex_indices[edge_a_idx * 2u];
-        var right_vertex = edge_vertex_indices[edge_a_idx * 2u + 1u];
-        let b_left_vertex = edge_vertex_indices[edge_b_idx * 2u];
-        let b_right_vertex = edge_vertex_indices[edge_b_idx * 2u + 1u];
-        // swap the left and right vertices
+        var cell = edge_cell_indices[edge_a_idx * 2u];
         if !primary {
-                left_vertex = left_vertex ^ right_vertex;
-                right_vertex = left_vertex ^ right_vertex;
-                left_vertex = left_vertex ^ right_vertex;
+                cell = edge_cell_indices[edge_a_idx * 2u + 1u];
         }
 
+        let adjacent_edges = get_adjacent_edges(edge_a_idx, cell);
+
+        var left_edge = adjacent_edges.x;
+        var right_edge = adjacent_edges.y;
+
+        // swap the left and right edges
+        if !primary {
+                left_edge = left_edge ^ right_edge;
+                right_edge = left_edge ^ right_edge;
+                left_edge = left_edge ^ right_edge;
+        }
+        let angles = compute_angles(edge_a_idx, left_edge, right_edge);
+
         var angle_offset = 0.0;
-        // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees so that the only correction left depends on the number of edges connected to the shared vertex.
+        // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees.
 
         if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u] && primary {
                 angle_offset += PI;
@@ -65,48 +122,17 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
                 angle_offset += PI;
         }
 
-        // The "top" vertex is the one not shared between our edge and the other edge
-        var top_vertex = b_right_vertex;
-        if top_vertex == left_vertex || top_vertex == right_vertex {
-                top_vertex = b_left_vertex;
-        }
 
         // This represents the "left" edge of our triangle
         var angle_sign = 1.0;
         // This is the "right" edge of our triangle
-        if right_vertex == b_right_vertex || right_vertex == b_left_vertex {
-                angle_sign = -1.0;
+        if right_edge == edge_b_idx {
+                angle_offset = mod_tau(angle_offset - angles.y);
+                return angle_offset;
         }
 
-        // Determine if we are dealing with a hexagonal or pentagonal cell
-        let num_left_edges = vertex_edge_offsets[left_vertex + 1u] - vertex_edge_offsets[left_vertex];
-        let num_right_edges = vertex_edge_offsets[right_vertex + 1u] - vertex_edge_offsets[right_vertex];
-        let num_top_edges = vertex_edge_offsets[top_vertex + 1u] - vertex_edge_offsets[top_vertex];
-        let total_edges = num_left_edges + num_right_edges + num_top_edges;
-        // Hexagonal Cell
-        if total_edges == 18 {
-                angle_offset += angle_sign * (TAU / 6.0);
-                return (angle_offset + TAU) % TAU;
-        }
-
-        // Pentagonal Cell
-        if angle_sign > 0.0 {
-                // if the vertex is the center of a pentagon, then the angle is 72 degrees
-                if num_left_edges == 5 {
-                        angle_offset += angle_sign * (TAU / 5.0);
-                        return (angle_offset + TAU) % TAU;
-                }
-                // otherwise the angle is 54 degrees
-                angle_offset += angle_sign * (PI - TAU / 5.0) / 2.0;
-                return (angle_offset + TAU) % TAU;
-        }
-
-        if num_right_edges == 5 {
-                angle_offset += angle_sign * (TAU / 5.0);
-                return (angle_offset + TAU) % TAU;
-        }
-        angle_offset += angle_sign * (PI - TAU / 5.0) / 2.0;
-        return (angle_offset + TAU) % TAU;
+        angle_offset = mod_tau(angle_offset + angles.x);
+        return angle_offset;
 }
 
 @compute @workgroup_size(64)

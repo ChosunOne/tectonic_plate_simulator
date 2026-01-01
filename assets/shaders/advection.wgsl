@@ -1,7 +1,7 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
 const DT: f32 = 0.01666666667;
-const EPS: f32 = 1e-6;
+const EPS: f32 = 1e-10;
 
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
