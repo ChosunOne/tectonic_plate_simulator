@@ -20,6 +20,7 @@ const EPS: f32 = 1e-6;
 @group(2) @binding(7) var<storage, read> cell_cell_indices: array<u32>;
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 
 fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if vel_a.x < EPS {

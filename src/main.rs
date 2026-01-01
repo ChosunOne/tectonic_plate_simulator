@@ -7,10 +7,11 @@ use tectonic_plate_simulator::{
         velocity_material::VelocityMaterial,
     },
     plugins::{
-        divergence::DivergencePlugin, mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
-        swappable_bind_group::SwappableBindGroupPlugin, velocity::VelocityPlugin,
-        vertex_divergence::VertexDivergencePlugin, vertex_pressure::VertexPressurePlugin,
-        vertex_velocity::VertexVelocityPlugin, viscosity::ViscosityPlugin,
+        advection::AdvectionPlugin, divergence::DivergencePlugin, mantle_grid::MantleGridPlugin,
+        pressure::PressurePlugin, swappable_bind_group::SwappableBindGroupPlugin,
+        velocity::VelocityPlugin, vertex_divergence::VertexDivergencePlugin,
+        vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
+        viscosity::ViscosityPlugin,
     },
     resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility},
     systems::{
@@ -39,6 +40,7 @@ fn main() {
         .add_plugins(VertexPressurePlugin)
         .add_plugins(VelocityPlugin)
         .add_plugins(ViscosityPlugin)
+        .add_plugins(AdvectionPlugin)
         .add_plugins(DivergencePlugin)
         .add_plugins(VertexVelocityPlugin)
         .add_plugins(VertexDivergencePlugin)

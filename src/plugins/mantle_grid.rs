@@ -45,6 +45,15 @@ fn setup_edge_topology(
         .flat_map(|cell| cell.vertices)
         .collect::<Vec<u32>>();
 
+    let mut edge_lengths = vec![0.0f32; edge_cell_adjacency.len()];
+    for (i, length) in edge_lengths.iter_mut().enumerate() {
+        let left_vertex_idx = edge_vertex_adjacency.indices()[i * 2] as usize;
+        let right_vertex_idx = edge_vertex_adjacency.indices()[i * 2 + 1] as usize;
+        let left_vertex = grid.sphere().raw_points()[left_vertex_idx];
+        let right_vertex = grid.sphere().raw_points()[right_vertex_idx];
+        *length = left_vertex.distance(right_vertex);
+    }
+
     let mut builder = SwappableBindGroup::builder();
     let visibility = ShaderStages::COMPUTE;
     let usage = BufferUsages::STORAGE | BufferUsages::COPY_SRC;
@@ -125,6 +134,14 @@ fn setup_edge_topology(
         vertex_cell_adjacency.indices(),
         &render_device,
         Some("vertex_cell_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        &edge_lengths,
+        &render_device,
+        Some("edge_lengths"),
         visibility,
         usage,
         true,

@@ -16,6 +16,7 @@ const DT: f32 = 0.01666666667;
 @group(2) @binding(7) var<storage, read> cell_cell_indices: array<u32>;
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 
 fn is_primary(cell_idx: u32, edge_idx: u32) -> bool {
         return cell_idx == edge_cell_indices[edge_idx * 2u];
