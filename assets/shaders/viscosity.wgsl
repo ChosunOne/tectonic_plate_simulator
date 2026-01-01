@@ -1,6 +1,6 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const VISCOSITY: f32 = 0.1;
+const VISCOSITY: f32 = 0.0001;
 const DT: f32 = 0.01666666667;
 const EPS: f32 = 1e-10;
 
@@ -160,7 +160,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let angle_offset = get_angle_offset(edge_idx, primary_edge_idx, true);
 
                 let primary_edge_velocity = velocity_in[primary_edge_idx];
-                let adjusted_velocity = vec2<f32>(primary_edge_velocity.x, ((primary_edge_velocity.y + angle_offset) + TAU) % TAU);
+                let adjusted_velocity = vec2<f32>(primary_edge_velocity.x, mod_tau(primary_edge_velocity.y + angle_offset));
 
                 avg_vel = add_velocity(avg_vel, adjusted_velocity);
         }
@@ -175,7 +175,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let angle_offset = get_angle_offset(edge_idx, secondary_edge_idx, false) + PI;
 
                 let secondary_edge_velocity = velocity_in[secondary_edge_idx];
-                let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, ((secondary_edge_velocity.y + angle_offset) + TAU) % TAU);
+                let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, mod_tau(secondary_edge_velocity.y + angle_offset));
 
                 avg_vel = add_velocity(avg_vel, adjusted_velocity);
         }

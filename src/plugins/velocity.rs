@@ -42,10 +42,10 @@ impl Plugin for VelocityPlugin {
 fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
     debug!("Setup velocity");
     let num_edges = grid.edge_cell_adjacency().len();
-    let mut velocity_data = Vec::with_capacity(num_edges);
-    for i in 0..num_edges {
-        let angle = if i == 1000 { PI / 2.0 } else { 0.0 };
-        let magnitude = if i == 1000 { 30.0 } else { 0.0 };
+    let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
+    for _ in 0..num_edges {
+        let angle = 0.2;
+        let magnitude = 1.0;
         velocity_data.push([magnitude, angle]);
     }
 
