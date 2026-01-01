@@ -22,6 +22,10 @@ const EPS: f32 = 1e-7;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 
+fn mod_tau(theta: f32) -> f32 {
+        return (theta + TAU) % TAU;
+}
+
 fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if vel_a.x < EPS {
                 return vel_b;
@@ -42,8 +46,8 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         if new_mag < EPS {
                 return vec2<f32>(0.0, 0.0);
         }
-        let new_angle = atan2(ry, rx);
-        return vec2<f32>(new_mag, (new_angle + TAU) % TAU);
+        let new_angle = mod_tau(atan2(ry, rx));
+        return vec2<f32>(new_mag, new_angle);
 }
 
 @compute @workgroup_size(64)
@@ -59,7 +63,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let secondary_phi = phi_in[edge_cell_indices[edge_idx * 2u + 1u]];
 
         if abs(primary_phi - secondary_phi) < EPS {
-                velocity_out[edge_idx] = velocity_in[edge_idx];
                 return;
         }
 
@@ -70,7 +73,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let mag = DT * abs(primary_phi - secondary_phi) / RHO;
 
-        let vel = velocity_out[edge_idx];
         let vel_adjustment = vec2<f32>(mag, angle);
         velocity_out[edge_idx] = add_velocity(velocity_out[edge_idx], vel_adjustment);
 }

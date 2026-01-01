@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
 use bevy::{
     app::{App, Plugin},
@@ -43,9 +43,9 @@ fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: 
     debug!("Setup velocity");
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
-    for _ in 0..num_edges {
-        let angle = 0.2;
-        let magnitude = 100.0;
+    for i in 0..num_edges {
+        let angle = i as f32 % TAU;
+        let magnitude = i as f32 / 10.0;
         velocity_data.push([magnitude, angle]);
     }
 

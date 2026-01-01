@@ -368,7 +368,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let departure_position = map_to_reference_frame(d, base_edge, vec2<f32>(remaining_mag, mod_tau(angle + angle_offset)));
         var interpolated_velocity = interpolate_edge_velocities(departure_position, angles, vec3<u32>(base_edge, left_edge, right_edge), cell);
-        interpolated_velocity.y = mod_tau(interpolated_velocity.y + angle_offset);
+        interpolated_velocity.y = mod_tau(interpolated_velocity.y - angle_offset);
+
         let delta_v = add_velocity(interpolated_velocity, vec2<f32>(edge_velocity.x, mod_tau(edge_velocity.y + PI)));
         // update velocity out with the advection contribution
         velocity_out[edge_idx] = add_velocity(velocity_out[edge_idx], delta_v);
