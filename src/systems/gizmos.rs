@@ -1,8 +1,11 @@
 use bevy::prelude::*;
 
-use crate::resources::{
-    gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid, velocity::VelocitySync,
-    vertex_velocity::VertexVelocitySync,
+use crate::{
+    constants::SPHERE_RADIUS,
+    resources::{
+        gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid, velocity::VelocitySync,
+        vertex_velocity::VertexVelocitySync,
+    },
 };
 
 pub fn draw_triangle_grid(
@@ -23,9 +26,9 @@ pub fn draw_triangle_grid(
             triangle[2] as usize,
         );
 
-        let pa = points[a];
-        let pb = points[b];
-        let pc = points[c];
+        let pa = SPHERE_RADIUS * points[a];
+        let pb = SPHERE_RADIUS * points[b];
+        let pc = SPHERE_RADIUS * points[c];
 
         gizmos.line(pa.into(), pb.into(), Color::srgb(0.0, 1.0, 0.5));
         gizmos.line(pb.into(), pc.into(), Color::srgb(0.0, 1.0, 0.5));
@@ -44,7 +47,7 @@ pub fn draw_triangle_grid_centers(
     let indices = grid.sphere().get_all_indices();
     for triangle_idx in 0..indices.len() / 3 {
         let center = grid.cells()[triangle_idx].center;
-        gizmos.cross(center, 0.005, Color::srgb(1.0, 0.0, 0.0));
+        gizmos.cross(center, 5.00, Color::srgb(1.0, 0.0, 0.0));
     }
 }
 
@@ -94,8 +97,8 @@ pub fn draw_velocity_arrows(
 
     for edge_idx in 0..edge_vertex_adjacency.len() {
         let edge_verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
-        let v_lower_pos: Vec3 = points[edge_verts[0]].into();
-        let v_higher_pos: Vec3 = points[edge_verts[1]].into();
+        let v_lower_pos: Vec3 = (points[edge_verts[0]] * SPHERE_RADIUS).into();
+        let v_higher_pos: Vec3 = (points[edge_verts[1]] * SPHERE_RADIUS).into();
 
         let midpoint = (v_lower_pos + v_higher_pos) / 2.0;
         let edge_dir = (v_higher_pos - v_lower_pos).normalize();
@@ -115,10 +118,16 @@ pub fn draw_velocity_arrows(
 
         let [magnitude, angle] = velocity[edge_idx];
         let direction = angle.cos() * toward_v_lower + angle.sin() * toward_primary;
+        let color = if magnitude < 10.0 {
+            Color::srgb(1.0, 0.5, 0.0)
+        } else {
+            Color::srgb(1.0, 1.0, 0.0)
+        };
+        let magnitude = magnitude.max(10.0);
 
         let arrow_end = midpoint + direction * magnitude * scale;
 
-        gizmos.arrow(midpoint, arrow_end, Color::srgb(1.0, 1.0, 0.0));
+        gizmos.arrow(midpoint, arrow_end, color);
     }
 }
 
@@ -148,7 +157,7 @@ pub fn draw_vertex_velocity_arrows(
 
     for vertex_idx in 0..vertex_edge_adjacency.len() {
         let [mut magnitude, angle] = vertex_velocity[vertex_idx];
-        let vertex_pos: Vec3 = points[vertex_idx].into();
+        let vertex_pos: Vec3 = (SPHERE_RADIUS * points[vertex_idx]).into();
         let vertex_normal = vertex_pos.normalize();
 
         let edge_0_idx = vertex_edge_adjacency
@@ -162,7 +171,7 @@ pub fn draw_vertex_velocity_arrows(
             edge_0_verts[0]
         };
 
-        let other_pos: Vec3 = points[v_other].into();
+        let other_pos: Vec3 = (SPHERE_RADIUS * points[v_other]).into();
         let toward_self = (vertex_pos - other_pos).normalize();
 
         let tangent_x = (toward_self - vertex_normal * toward_self.dot(vertex_normal)).normalize();
@@ -176,7 +185,7 @@ pub fn draw_vertex_velocity_arrows(
             Color::srgb(1.0, 0.0, 0.0)
         };
 
-        magnitude = magnitude.max(0.02);
+        magnitude = magnitude.max(10.0);
 
         let arrow_end = vertex_pos + direction * magnitude * scale;
 

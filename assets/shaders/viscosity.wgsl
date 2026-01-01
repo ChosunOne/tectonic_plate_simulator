@@ -2,7 +2,7 @@ const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
 const VISCOSITY: f32 = 0.0001;
 const DT: f32 = 0.01666666667;
-const EPS: f32 = 1e-10;
+const EPS: f32 = 1e-7;
 
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
@@ -142,6 +142,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let num_edges = arrayLength(&velocity_in);
 
         if (edge_idx >= num_edges) {
+                return;
+        }
+
+        if VISCOSITY == 0.0 {
+                velocity_out[edge_idx] = velocity_in[edge_idx];
                 return;
         }
 

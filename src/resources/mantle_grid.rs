@@ -9,6 +9,8 @@ use bevy::{
 };
 use hexasphere::shapes::IcoSphere;
 
+use crate::constants::SPHERE_RADIUS;
+
 #[derive(Debug, Clone)]
 pub struct CellData {
     pub center: Vec3,
@@ -55,7 +57,7 @@ impl MantleGrid {
     }
 
     #[must_use]
-    pub fn sphere(&self) -> &IcoSphere<()> {
+    pub fn sphere(&self) -> &IcoSphere<Vec3A> {
         &self.0.sphere
     }
 
@@ -140,8 +142,8 @@ impl<T> Adjacency<T> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<Cell> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<Cell> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let edge_cells = Adjacency::<EdgeCell>::from(sphere);
         let cell_edges = Adjacency::<CellEdge>::from(sphere);
         let num_cells = cell_edges.len();
@@ -173,8 +175,8 @@ impl From<&IcoSphere<()>> for Adjacency<Cell> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<CellEdge> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<CellEdge> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let mesh_indices = sphere.get_all_indices();
         let num_cells = mesh_indices.len() / 3;
 
@@ -233,8 +235,8 @@ impl From<&IcoSphere<()>> for Adjacency<CellEdge> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<EdgeCell> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<EdgeCell> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let mesh_indices = sphere.get_all_indices();
         let num_cells = mesh_indices.len() / 3;
 
@@ -290,8 +292,8 @@ impl From<&IcoSphere<()>> for Adjacency<EdgeCell> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<EdgeVertex> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<EdgeVertex> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let mesh_indices = sphere.get_all_indices();
         let num_cells = mesh_indices.len() / 3;
 
@@ -342,8 +344,8 @@ impl From<&IcoSphere<()>> for Adjacency<EdgeVertex> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<VertexCell> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<VertexCell> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let points = sphere.raw_points();
         let mesh_indices = sphere.get_all_indices();
         let num_vertices = points.len();
@@ -385,8 +387,8 @@ impl From<&IcoSphere<()>> for Adjacency<VertexCell> {
     }
 }
 
-impl From<&IcoSphere<()>> for Adjacency<VertexEdge> {
-    fn from(sphere: &IcoSphere<()>) -> Self {
+impl<T> From<&IcoSphere<T>> for Adjacency<VertexEdge> {
+    fn from(sphere: &IcoSphere<T>) -> Self {
         let points = sphere.raw_points();
         let num_vertices = points.len();
         let edge_vertex = Adjacency::<EdgeVertex>::from(sphere);
@@ -467,7 +469,7 @@ struct MantleGridInner {
     pub cells: Vec<CellData>,
     pub edge_cell_adjacency: Adjacency<EdgeCell>,
     pub edge_vertex_adjacency: Adjacency<EdgeVertex>,
-    pub sphere: IcoSphere<()>,
+    pub sphere: IcoSphere<Vec3A>,
     pub vertex_cell_adjacency: Adjacency<VertexCell>,
     pub vertex_edge_adjacency: Adjacency<VertexEdge>,
     pub vertex_angle_offsets: Vec<f32>,
@@ -485,7 +487,7 @@ impl MantleGridInner {
     #[must_use]
     #[allow(clippy::too_many_lines)]
     pub fn new(subdivisions: usize) -> Self {
-        let sphere = IcoSphere::new(subdivisions, |_| {});
+        let sphere = IcoSphere::new(subdivisions, |v| v * SPHERE_RADIUS);
         let points = sphere.raw_points();
         let indices = sphere.get_all_indices();
         let num_triangles = indices.len() / 3;
@@ -504,9 +506,9 @@ impl MantleGridInner {
             let vertex_pos: Vec3 = points[vertex_idx].into();
             let vertex_normal = vertex_pos.normalize();
 
-            let is_pole = vertex_normal.x.abs() < 1e-6
-                && vertex_normal.z.abs() < 1e-6
-                && (vertex_normal.y.abs() - 1.0).abs() < 1e-6;
+            let is_pole = vertex_normal.x.abs() < 1e-7
+                && vertex_normal.z.abs() < 1e-7
+                && (vertex_normal.y.abs() - SPHERE_RADIUS).abs() < 1e-7;
 
             if is_pole {
                 pole_vertices.push(vertex_idx);
@@ -531,7 +533,7 @@ impl MantleGridInner {
                 (edge_dir - vertex_normal * edge_dir.dot(vertex_normal)).normalize();
 
             let west_raw = vertex_normal.cross(Vec3::Y);
-            if west_raw.length() < 0.05 {
+            if west_raw.length() < 0.05 * SPHERE_RADIUS {
                 pole_vertices.push(vertex_idx);
                 continue;
             }
@@ -587,11 +589,11 @@ impl MantleGridInner {
             let v1 = indices[base + 1];
             let v2 = indices[base + 2];
 
-            let p0: Vec3 = points[v0 as usize].into();
-            let p1: Vec3 = points[v1 as usize].into();
-            let p2: Vec3 = points[v2 as usize].into();
+            let p0: Vec3 = (SPHERE_RADIUS * points[v0 as usize]).into();
+            let p1: Vec3 = (SPHERE_RADIUS * points[v1 as usize]).into();
+            let p2: Vec3 = (SPHERE_RADIUS * points[v2 as usize]).into();
 
-            let center = ((p0 + p1 + p2) / 3.0).normalize();
+            let center = (p0 + p1 + p2) / 3.0;
 
             cells.push(CellData {
                 center,
@@ -617,7 +619,10 @@ impl MantleGridInner {
         let points = self.sphere.raw_points();
         let indices = self.sphere.get_all_indices();
 
-        let positions = points.iter().map(|&p| p.into()).collect::<Vec<[f32; 3]>>();
+        let positions = points
+            .iter()
+            .map(|&p| (SPHERE_RADIUS * p).into())
+            .collect::<Vec<[f32; 3]>>();
         let normals = points
             .iter()
             .map(|&p| p.normalize().into())

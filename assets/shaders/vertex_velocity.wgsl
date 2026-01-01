@@ -1,6 +1,6 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const EPS: f32 = 1e-10;
+const EPS: f32 = 1e-7;
 
 @group(0) @binding(0) var<storage, read_write> vertex_velocity: array<vec2<f32>>;
 
