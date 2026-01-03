@@ -1,6 +1,8 @@
 const PI: f32 = 3.14159265359;
 const RHO: f32 = 1.0;
-const DT: f32 = 0.01666666667;
+
+struct SimParams { dt: f32 };
+
 @group(0) @binding(0) var<storage, read_write> divergence: array<f32>;
 
 @group(1) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
@@ -17,6 +19,8 @@ const DT: f32 = 0.01666666667;
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
+
+@group(3) @binding(0) var<uniform> sim_params: SimParams;
 
 fn is_primary(cell_idx: u32, edge_idx: u32) -> bool {
         return cell_idx == edge_cell_indices[edge_idx * 2u];
@@ -42,6 +46,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 }
                 sum += mag * sin(angle);
         }
-        sum = RHO * sum / DT;
+        sum = RHO * sum / sim_params.dt;
         divergence[cell_idx] = sum;
 }

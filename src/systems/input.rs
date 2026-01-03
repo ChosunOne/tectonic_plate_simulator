@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-use crate::resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility};
+use crate::resources::{
+    active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
+    simulation_time::SimulationTime,
+};
 
 #[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub enum GizmoAction {
@@ -17,6 +20,14 @@ pub enum MaterialAction {
     ShowPressure,
     ShowVelocity,
     ShowDivergence,
+}
+
+#[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+pub enum SimulationAction {
+    TogglePause,
+    StepForward,
+    SpeedUp,
+    SlowDown,
 }
 
 pub fn toggle_gizmo_visibility(
@@ -88,6 +99,45 @@ pub fn toggle_active_material(
             MaterialAction::ShowPressure => *active_material = ActiveMaterial::Pressure,
             MaterialAction::ShowVelocity => *active_material = ActiveMaterial::Velocity,
             MaterialAction::ShowDivergence => *active_material = ActiveMaterial::Divergence,
+        }
+    }
+}
+
+#[must_use]
+pub fn simulation_input_map() -> InputMap<SimulationAction> {
+    InputMap::new([
+        (
+            SimulationAction::TogglePause,
+            ButtonlikeChord::modified(ModifierKey::Control, KeyCode::KeyP),
+        ),
+        (
+            SimulationAction::StepForward,
+            ButtonlikeChord::modified(ModifierKey::Control, KeyCode::KeyF),
+        ),
+        (
+            SimulationAction::SpeedUp,
+            ButtonlikeChord::modified(ModifierKey::Control, KeyCode::Period),
+        ),
+        (
+            SimulationAction::SlowDown,
+            ButtonlikeChord::modified(ModifierKey::Control, KeyCode::Comma),
+        ),
+    ])
+}
+
+pub fn handle_simulation_input(
+    action_state: Res<ActionState<SimulationAction>>,
+    sim_time: Res<SimulationTime>,
+) {
+    for action in action_state.get_just_pressed() {
+        match action {
+            SimulationAction::TogglePause => sim_time.toggle_pause(),
+            SimulationAction::StepForward => {
+                sim_time.pause();
+                sim_time.step();
+            }
+            SimulationAction::SpeedUp => sim_time.double_speed(),
+            SimulationAction::SlowDown => sim_time.half_speed(),
         }
     }
 }

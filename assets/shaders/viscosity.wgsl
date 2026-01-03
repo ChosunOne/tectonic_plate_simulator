@@ -1,8 +1,9 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
 const VISCOSITY: f32 = 0.001;
-const DT: f32 = 0.01666666667;
 const EPS: f32 = 1e-7;
+
+struct SimParams { dt: f32 }
 
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
@@ -18,6 +19,8 @@ const EPS: f32 = 1e-7;
 @group(1) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
+
+@group(2) @binding(0) var<uniform> sim_params: SimParams; 
 
 fn mod_tau(theta: f32) -> f32 {
         return (theta + TAU) % TAU;
@@ -188,7 +191,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let neg_velocity = vec2<f32>(velocity_in[edge_idx].x, velocity_in[edge_idx].y + PI);
         var avg_diff = add_velocity(avg_vel, neg_velocity);
-        avg_diff.x *= DT * VISCOSITY;
+        avg_diff.x *= sim_params.dt * VISCOSITY;
         if abs(avg_diff.x) < EPS {
                 velocity_out[edge_idx] = velocity_in[edge_idx];
                 return;

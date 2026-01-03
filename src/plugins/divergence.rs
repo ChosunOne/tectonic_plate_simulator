@@ -10,8 +10,8 @@ use bevy::{
 
 use crate::{
     components::render::{
-        DivergenceBindGroup, PhiBindGroup, PressureBindGroup, TopologyBindGroup, VelocityBindGroup,
-        compute_pass::ComputePass,
+        DivergenceBindGroup, PhiBindGroup, PressureBindGroup, SimParamsBindGroup,
+        TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
     },
     plugins::advection::{AdvectionPassLabel, setup_advection},
     resources::mantle_grid::MantleGrid,
@@ -58,6 +58,7 @@ pub fn setup_divergence(world: &mut World) {
         .owned_bind_group_marker(DivergenceBindGroup)
         .bind_group::<VelocityBindGroup>(1)
         .bind_group::<TopologyBindGroup>(2)
+        .bind_group::<SimParamsBindGroup>(3)
         .build(world);
 
     let phi_zero_pass = ComputePass::builder()
@@ -96,6 +97,7 @@ pub fn setup_divergence(world: &mut World) {
         .bind_group::<VelocityBindGroup>(0)
         .bind_group::<PhiBindGroup>(1)
         .bind_group::<TopologyBindGroup>(2)
+        .bind_group::<SimParamsBindGroup>(3)
         .build(world);
     let mut render_graph = world.resource_mut::<RenderGraph>();
     render_graph.add_node(DivergencePassLabel, divergence_pass);

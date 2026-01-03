@@ -23,6 +23,10 @@ pub enum BufferEntry {
         double_buffer_index: usize,
         visibility: ShaderStages,
     },
+    Uniform {
+        buffer: Buffer,
+        visibility: ShaderStages,
+    },
 }
 
 #[derive(Default)]
@@ -85,6 +89,20 @@ impl BindGroupBuilder {
                         visibility: *visibility,
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    });
+                    binding_index += 1;
+                }
+                BufferEntry::Uniform { buffer, visibility } => {
+                    buffers.push(buffer.clone());
+                    layout_entries.push(BindGroupLayoutEntry {
+                        binding: binding_index,
+                        visibility: *visibility,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: None,
                         },
@@ -219,6 +237,16 @@ impl BindGroupBuilder {
         self
     }
 
+    pub fn add_uniform(&mut self, buffer: Buffer, visibility: ShaderStages) -> &mut Self {
+        self.entries
+            .push(BufferEntry::Uniform { buffer, visibility });
+        self
+    }
+
+    pub fn add_compute_uniform(&mut self, buffer: Buffer) -> &mut Self {
+        self.add_uniform(buffer, ShaderStages::COMPUTE)
+    }
+
     fn build_bind_group(
         &self,
         render_device: &RenderDevice,
@@ -231,13 +259,6 @@ impl BindGroupBuilder {
 
         for entry in &self.entries {
             match entry {
-                BufferEntry::Static { buffer, .. } => {
-                    entries.push(BindGroupEntry {
-                        binding: binding_index,
-                        resource: buffer.as_entire_binding(),
-                    });
-                    binding_index += 1;
-                }
                 BufferEntry::Double {
                     double_buffer_index,
                     ..
@@ -256,6 +277,13 @@ impl BindGroupBuilder {
                     entries.push(BindGroupEntry {
                         binding: binding_index,
                         resource: write_buf.as_entire_binding(),
+                    });
+                    binding_index += 1;
+                }
+                BufferEntry::Static { buffer, .. } | BufferEntry::Uniform { buffer, .. } => {
+                    entries.push(BindGroupEntry {
+                        binding: binding_index,
+                        resource: buffer.as_entire_binding(),
                     });
                     binding_index += 1;
                 }

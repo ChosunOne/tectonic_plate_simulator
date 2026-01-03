@@ -9,7 +9,9 @@ use bevy::{
 };
 
 use crate::{
-    components::render::{TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass},
+    components::render::{
+        SimParamsBindGroup, TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
+    },
     resources::mantle_grid::MantleGrid,
 };
 
@@ -38,6 +40,7 @@ pub fn setup_viscosity(world: &mut World) {
         .workgroups(num_workgroups, 1, 1)
         .bind_group::<VelocityBindGroup>(0)
         .bind_group::<TopologyBindGroup>(1)
+        .bind_group::<SimParamsBindGroup>(2)
         .build(world);
 
     let mut render_graph = world.resource_mut::<RenderGraph>();

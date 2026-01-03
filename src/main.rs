@@ -8,10 +8,10 @@ use tectonic_plate_simulator::{
     },
     plugins::{
         advection::AdvectionPlugin, divergence::DivergencePlugin, mantle_grid::MantleGridPlugin,
-        pressure::PressurePlugin, swappable_bind_group::SwappableBindGroupPlugin,
-        velocity::VelocityPlugin, vertex_divergence::VertexDivergencePlugin,
-        vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
-        viscosity::ViscosityPlugin,
+        pressure::PressurePlugin, sim_params::SimParamsPlugin,
+        swappable_bind_group::SwappableBindGroupPlugin, ui::UiPlugin, velocity::VelocityPlugin,
+        vertex_divergence::VertexDivergencePlugin, vertex_pressure::VertexPressurePlugin,
+        vertex_velocity::VertexVelocityPlugin, viscosity::ViscosityPlugin,
     },
     resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility},
     systems::{
@@ -21,7 +21,8 @@ use tectonic_plate_simulator::{
         },
         globe_visibility::update_globe_visibility,
         input::{
-            GizmoAction, MaterialAction, gizmo_input_map, material_input_map,
+            GizmoAction, MaterialAction, SimulationAction, gizmo_input_map,
+            handle_simulation_input, material_input_map, simulation_input_map,
             toggle_active_material, toggle_gizmo_visibility,
         },
         setup::setup,
@@ -33,8 +34,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(InputManagerPlugin::<GizmoAction>::default())
         .add_plugins(InputManagerPlugin::<MaterialAction>::default())
+        .add_plugins(InputManagerPlugin::<SimulationAction>::default())
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(SwappableBindGroupPlugin)
+        .add_plugins(SimParamsPlugin)
         .add_plugins(MantleGridPlugin)
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
@@ -44,6 +47,7 @@ fn main() {
         .add_plugins(DivergencePlugin)
         .add_plugins(VertexVelocityPlugin)
         .add_plugins(VertexDivergencePlugin)
+        .add_plugins(UiPlugin)
         .add_plugins(MaterialPlugin::<PressureMaterial>::default())
         .add_plugins(MaterialPlugin::<VelocityMaterial>::default())
         .add_plugins(MaterialPlugin::<DivergenceMaterial>::default())
@@ -51,14 +55,17 @@ fn main() {
         .init_resource::<ActiveMaterial>()
         .init_resource::<ActionState<GizmoAction>>()
         .init_resource::<ActionState<MaterialAction>>()
+        .init_resource::<ActionState<SimulationAction>>()
         .insert_resource(gizmo_input_map())
         .insert_resource(material_input_map())
+        .insert_resource(simulation_input_map())
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
                 toggle_gizmo_visibility,
                 toggle_active_material,
+                handle_simulation_input,
                 update_globe_visibility,
                 draw_triangle_grid,
                 draw_triangle_grid_centers,

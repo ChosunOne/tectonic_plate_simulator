@@ -32,3 +32,6 @@ pub struct VertexDivergenceReductionBindGroup;
 
 #[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct PhiBindGroup;
+
+#[derive(Component, Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
+pub struct SimParamsBindGroup;

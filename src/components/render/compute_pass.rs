@@ -20,6 +20,7 @@ use bytemuck::{AnyBitPattern, NoUninit};
 use crate::{
     components::render::{BindGroupBuilder, SwappableBindGroup},
     render::double_buffer::DoubleBuffer,
+    resources::simulation_time::SimulationTime,
 };
 const EXT_BG_WAIT_THRESHOLD: u32 = 120;
 
@@ -351,6 +352,12 @@ impl Node for ComputePass {
         world: &'w World,
     ) -> Result<(), NodeRunError> {
         if !matches!(self.state, ComputePassState::Ready) {
+            return Ok(());
+        }
+
+        if let Some(sim_time) = world.get_resource::<SimulationTime>()
+            && !sim_time.should_run()
+        {
             return Ok(());
         }
 
