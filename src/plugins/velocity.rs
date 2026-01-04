@@ -39,7 +39,11 @@ impl Plugin for VelocityPlugin {
     }
 }
 
-fn setup_velocity(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
+pub fn setup_velocity(
+    mut commands: Commands,
+    grid: Res<MantleGrid>,
+    render_device: Res<RenderDevice>,
+) {
     debug!("Setup velocity");
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);

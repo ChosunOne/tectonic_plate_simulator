@@ -1,4 +1,5 @@
 pub mod advection;
+pub mod departure_info;
 pub mod divergence;
 pub mod mantle_grid;
 pub mod pressure;

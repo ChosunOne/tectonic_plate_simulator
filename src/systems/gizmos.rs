@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 
 use crate::{
+    LocalFrame,
     constants::SPHERE_RADIUS,
     resources::{
-        gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid, selected_edge::SelectedEdge,
-        velocity::VelocitySync, vertex_velocity::VertexVelocitySync,
+        departure_info::DepartureInfoSync, gizmo_visibility::GizmoVisibility,
+        mantle_grid::MantleGrid, selected_edge::SelectedEdge, velocity::VelocitySync,
+        vertex_velocity::VertexVelocitySync,
     },
 };
 
@@ -90,35 +92,11 @@ pub fn draw_velocity_arrows(
         return;
     }
 
-    let points = grid.sphere().raw_points();
-    let edge_vertex_adjacency = grid.edge_vertex_adjacency();
-    let edge_cell_adjacency = grid.edge_cell_adjacency();
+    let num_edges = grid.edge_cell_adjacency().len();
 
-    let scale = 1.0;
-
-    for edge_idx in 0..edge_vertex_adjacency.len() {
-        let edge_verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
-        let v_lower_pos: Vec3 = (points[edge_verts[0]] * SPHERE_RADIUS).into();
-        let v_higher_pos: Vec3 = (points[edge_verts[1]] * SPHERE_RADIUS).into();
-
-        let midpoint = (v_lower_pos + v_higher_pos) / 2.0;
-        let edge_dir = (v_higher_pos - v_lower_pos).normalize();
-
-        let toward_v_lower = -edge_dir;
-        let surface_normal = midpoint.normalize();
-        let perp = surface_normal.cross(edge_dir).normalize();
-
-        let edge_cells = edge_cell_adjacency.get(edge_idx).collect::<Vec<_>>();
-        let primary_cell_center = grid.cells()[edge_cells[0]].center;
-        let to_primary = primary_cell_center - midpoint;
-        let toward_primary = if to_primary.dot(perp) > 0.0 {
-            perp
-        } else {
-            -perp
-        };
-
+    for edge_idx in 0..num_edges {
+        let frame = LocalFrame::from_edge(&grid, edge_idx);
         let [magnitude, angle] = velocity[edge_idx];
-        let direction = angle.cos() * toward_v_lower + angle.sin() * toward_primary;
 
         let is_selected = selected_edge.0 == Some(edge_idx);
 
@@ -131,9 +109,9 @@ pub fn draw_velocity_arrows(
         };
         let magnitude = magnitude.max(10.0);
 
-        let arrow_end = midpoint + direction * magnitude * scale;
+        let arrow_end = frame.polar_to_world_position(magnitude, angle);
 
-        gizmos.arrow(midpoint, arrow_end, color);
+        gizmos.arrow(frame.origin, arrow_end, color);
     }
 }
 
@@ -155,35 +133,11 @@ pub fn draw_vertex_velocity_arrows(
         return;
     }
 
-    let points = grid.sphere().raw_points();
-    let vertex_edge_adjacency = grid.vertex_edge_adjacency();
-    let edge_vertex_adjacency = grid.edge_vertex_adjacency();
+    let num_vertices = grid.vertex_edge_adjacency().len();
 
-    let scale = 1.0;
-
-    for vertex_idx in 0..vertex_edge_adjacency.len() {
+    for vertex_idx in 0..num_vertices {
         let [mut magnitude, angle] = vertex_velocity[vertex_idx];
-        let vertex_pos: Vec3 = (SPHERE_RADIUS * points[vertex_idx]).into();
-        let vertex_normal = vertex_pos.normalize();
-
-        let edge_0_idx = vertex_edge_adjacency
-            .get(vertex_idx)
-            .next()
-            .expect("to have edge of vertex");
-        let edge_0_verts = edge_vertex_adjacency.get(edge_0_idx).collect::<Vec<_>>();
-        let v_other = if edge_0_verts[0] == vertex_idx {
-            edge_0_verts[1]
-        } else {
-            edge_0_verts[0]
-        };
-
-        let other_pos: Vec3 = (SPHERE_RADIUS * points[v_other]).into();
-        let toward_self = (vertex_pos - other_pos).normalize();
-
-        let tangent_x = (toward_self - vertex_normal * toward_self.dot(vertex_normal)).normalize();
-        let tangent_y = tangent_x.cross(vertex_normal).normalize();
-
-        let direction = angle.cos() * tangent_x + angle.sin() * tangent_y;
+        let frame = LocalFrame::from_vertex(&grid, vertex_idx);
 
         let color = if magnitude > 0.01 {
             Color::srgb(0.0, 0.0, 1.0)
@@ -193,8 +147,54 @@ pub fn draw_vertex_velocity_arrows(
 
         magnitude = magnitude.max(10.0);
 
-        let arrow_end = vertex_pos + direction * magnitude * scale;
+        let arrow_end = frame.polar_to_world_position(magnitude, angle);
 
-        gizmos.arrow(vertex_pos, arrow_end, color);
+        gizmos.arrow(frame.origin, arrow_end, color);
     }
+}
+
+pub fn draw_departure_gizmo(
+    mut gizmos: Gizmos,
+    grid: Res<MantleGrid>,
+    departure_sync: Res<DepartureInfoSync>,
+    selected_edge: Res<SelectedEdge>,
+) {
+    let Some(edge_idx) = selected_edge.0 else {
+        return;
+    };
+
+    let Ok(departure_data) = departure_sync.0.lock() else {
+        return;
+    };
+
+    if departure_data.is_empty() || edge_idx >= departure_data.len() {
+        return;
+    }
+
+    let info = &departure_data[edge_idx];
+
+    if info.pos[0] < f32::EPSILON && info.interpolated_velocity[0] < f32::EPSILON {
+        return;
+    }
+
+    let base_edge_idx = info.base_edge as usize;
+
+    let frame = LocalFrame::from_edge(&grid, base_edge_idx);
+    let departure_pos = frame.polar_to_world_position(info.pos[0], info.pos[1]);
+    let offset = departure_pos - frame.origin;
+    let interpolated_velocity =
+        frame.polar_to_world_position(info.interpolated_velocity[0], info.interpolated_velocity[1]);
+    let last_velocity = frame.polar_to_world_position(info.last_velocity[0], info.last_velocity[1]);
+
+    gizmos.cross(
+        departure_pos.normalize() * SPHERE_RADIUS,
+        2.0,
+        Color::srgb(0.0, 1.0, 1.0),
+    );
+    gizmos.arrow(
+        departure_pos.normalize() * SPHERE_RADIUS,
+        interpolated_velocity + offset,
+        Color::srgb(1.0, 0.0, 1.0),
+    );
+    gizmos.arrow(frame.origin, last_velocity, Color::srgb(1.0, 0.0, 0.0));
 }

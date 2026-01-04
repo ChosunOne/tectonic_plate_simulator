@@ -10,7 +10,8 @@ use bevy::{
 
 use crate::{
     components::render::{
-        SimParamsBindGroup, TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
+        DepartureBindGroup, SimParamsBindGroup, TopologyBindGroup, VelocityBindGroup,
+        compute_pass::ComputePass,
     },
     plugins::viscosity::{ViscosityPassLabel, setup_viscosity},
     resources::mantle_grid::MantleGrid,
@@ -42,6 +43,7 @@ pub fn setup_advection(world: &mut World) {
         .bind_group::<VelocityBindGroup>(0)
         .bind_group::<TopologyBindGroup>(1)
         .bind_group::<SimParamsBindGroup>(2)
+        .bind_group::<DepartureBindGroup>(3)
         .build(world);
 
     let mut render_graph = world.resource_mut::<RenderGraph>();

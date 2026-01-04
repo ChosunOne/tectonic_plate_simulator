@@ -51,7 +51,7 @@ pub fn setup(
     commands.spawn((
         PanOrbitCamera {
             zoom_upper_limit: Some(10.0 * SPHERE_RADIUS),
-            zoom_lower_limit: 2.0 * SPHERE_RADIUS,
+            zoom_lower_limit: 1.05 * SPHERE_RADIUS,
             pan_sensitivity: 0.0,
             radius: Some(SPHERE_RADIUS * 5.0),
             button_orbit: MouseButton::Right,

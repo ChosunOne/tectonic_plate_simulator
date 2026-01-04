@@ -7,11 +7,12 @@ use tectonic_plate_simulator::{
         velocity_material::VelocityMaterial,
     },
     plugins::{
-        advection::AdvectionPlugin, divergence::DivergencePlugin, mantle_grid::MantleGridPlugin,
-        pressure::PressurePlugin, sim_params::SimParamsPlugin,
-        swappable_bind_group::SwappableBindGroupPlugin, ui::UiPlugin, velocity::VelocityPlugin,
-        vertex_divergence::VertexDivergencePlugin, vertex_pressure::VertexPressurePlugin,
-        vertex_velocity::VertexVelocityPlugin, viscosity::ViscosityPlugin,
+        advection::AdvectionPlugin, departure_info::DepartureInfoPlugin,
+        divergence::DivergencePlugin, mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
+        sim_params::SimParamsPlugin, swappable_bind_group::SwappableBindGroupPlugin, ui::UiPlugin,
+        velocity::VelocityPlugin, vertex_divergence::VertexDivergencePlugin,
+        vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
+        viscosity::ViscosityPlugin,
     },
     resources::{
         active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
@@ -19,8 +20,8 @@ use tectonic_plate_simulator::{
     },
     systems::{
         gizmos::{
-            draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors,
-            draw_velocity_arrows, draw_vertex_velocity_arrows,
+            draw_departure_gizmo, draw_triangle_grid, draw_triangle_grid_centers,
+            draw_triangle_grid_neighbors, draw_velocity_arrows, draw_vertex_velocity_arrows,
         },
         globe_visibility::update_globe_visibility,
         input::{
@@ -49,6 +50,7 @@ fn main() {
         .add_plugins(VelocityPlugin)
         .add_plugins(ViscosityPlugin)
         .add_plugins(AdvectionPlugin)
+        .add_plugins(DepartureInfoPlugin)
         .add_plugins(DivergencePlugin)
         .add_plugins(VertexVelocityPlugin)
         .add_plugins(VertexDivergencePlugin)
@@ -81,6 +83,7 @@ fn main() {
                 draw_triangle_grid_neighbors,
                 draw_velocity_arrows,
                 draw_vertex_velocity_arrows,
+                draw_departure_gizmo,
             ),
         )
         .run();

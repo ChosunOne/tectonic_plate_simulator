@@ -4,6 +4,14 @@ const EPS: f32 = 1e-7;
 
 struct SimParams { dt: f32 }
 
+struct DepartureInfo {
+        base_edge: u32,
+        cell: u32,
+        pos: vec2<f32>,
+        interpolated_velocity: vec2<f32>,
+        last_velocity: vec2<f32>,
+}
+
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
 
@@ -20,6 +28,9 @@ struct SimParams { dt: f32 }
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams;
+
+@group(3) @binding(0) var<storage, read> departure_in: array<DepartureInfo>;
+@group(3) @binding(1) var<storage, read_write> departure_out: array<DepartureInfo>;
 
 fn mod_tau(theta: f32) -> f32 {
         return (theta + TAU) % TAU;
@@ -191,7 +202,7 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
 
         var base_offset = 0.0;
         if base_secondary_cell == cell {
-                base_offset = mod_tau(base_offset + PI);
+                base_offset = mod_tau(base_offset);
         }
 
         let left_primary_cell = edge_cell_indices[edges.y * 2u];
@@ -320,16 +331,23 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
+        if sim_params.dt < EPS {
+                departure_out[edge_idx] = departure_in[edge_idx];
+                return;
+        }
+
         let edge_velocity = velocity_in[edge_idx];
-        if abs(edge_velocity.x) < EPS {
+        if abs(edge_velocity.x * sim_params.dt) < EPS {
+                departure_out[edge_idx] = DepartureInfo(0u, 0u, vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 0.0));
                 return;
         }
 
         var base_edge = edge_idx;
         var remaining_mag = edge_velocity.x * sim_params.dt;
+        let angle = edge_velocity.y;
+
         // trace backward, flip the current angle
-        var angle = mod_tau(edge_velocity.y + PI);
-        var angle_offset = 0.0;
+        var angle_offset = PI;
         var d = edge_lengths[base_edge] / 2.0;
         var l_exit = 0.0;
         var cell: u32;
@@ -343,7 +361,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let secondary_cell = edge_cell_indices[base_edge * 2u + 1u];
                 cell = primary_cell;
                 if mod_tau(angle + angle_offset) > PI {
-                        angle_offset = mod_tau(angle_offset + PI);
                         cell = secondary_cell;
                         d = edge_lengths[base_edge] - d;
                 }
@@ -371,9 +388,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let departure_position = map_to_reference_frame(d, base_edge, vec2<f32>(remaining_mag, mod_tau(angle + angle_offset)));
         var interpolated_velocity = interpolate_edge_velocities(departure_position, angles, vec3<u32>(base_edge, left_edge, right_edge), cell);
+
+        departure_out[edge_idx] = DepartureInfo(base_edge, cell, departure_position, interpolated_velocity, edge_velocity);
+
         interpolated_velocity.y = mod_tau(interpolated_velocity.y - angle_offset);
 
-        let delta_v = add_velocity(interpolated_velocity, vec2<f32>(edge_velocity.x, mod_tau(edge_velocity.y + PI)));
+        var delta_v = add_velocity(interpolated_velocity, vec2<f32>(edge_velocity.x, mod_tau(edge_velocity.y)));
+        delta_v.y = mod_tau(delta_v.y + PI);
         // update velocity out with the advection contribution
         velocity_out[edge_idx] = add_velocity(velocity_out[edge_idx], delta_v);
 }

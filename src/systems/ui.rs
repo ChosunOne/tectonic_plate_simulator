@@ -12,7 +12,8 @@ use bevy::{
 use crate::{
     components::ui::{edge_info::EdgeInfoText, simulation::SimulationStatusText},
     resources::{
-        selected_edge::SelectedEdge, simulation_time::SimulationTime, velocity::VelocitySync,
+        departure_info::DepartureInfoSync, selected_edge::SelectedEdge,
+        simulation_time::SimulationTime, velocity::VelocitySync,
     },
 };
 
@@ -87,6 +88,7 @@ pub fn setup_edge_info_ui(mut commands: Commands) {
 pub fn update_edge_info_ui(
     selected_edge: Res<SelectedEdge>,
     velocity_sync: Res<VelocitySync>,
+    departure_sync: Res<DepartureInfoSync>,
     mut query: Query<(&mut Text, &mut Visibility), With<EdgeInfoText>>,
 ) {
     let Ok((mut text, mut visibility)) = query.single_mut() else {
@@ -105,11 +107,25 @@ pub fn update_edge_info_ui(
         return;
     };
 
+    let Ok(departure) = departure_sync.0.lock() else {
+        **text = format!("Edge: {edge_idx}\n(departure unavailable)");
+        return;
+    };
+
     if edge_idx >= velocity.len() {
         **text = format!("Edge: {edge_idx}\n(velocity unavailable)");
         return;
     }
 
     let [magnitude, angle] = velocity[edge_idx];
-    **text = format!("Edge: {edge_idx}\nMagnitude: {magnitude:.4}\nAngle: {angle:.4} rad");
+    let info = departure[edge_idx];
+    **text = format!(
+        "Edge: {edge_idx}\nMagnitude: {magnitude:.4}\nAngle: {angle:.4} rad\n\nDeparture Info\nDep. Pos X: {:.4}\nDep. Pos Y: {:.4}\nInt. Magnitude: {:.4}\nInt. Angle: {:.4}\nLast Magnitude: {:.4}\nLast Angle: {:.4}",
+        info.pos[0],
+        info.pos[1],
+        info.interpolated_velocity[0],
+        info.interpolated_velocity[1],
+        info.last_velocity[0],
+        info.last_velocity[1]
+    );
 }
