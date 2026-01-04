@@ -11,6 +11,7 @@ use bevy::{
 
 use crate::{
     components::render::{SwappableBindGroup, TopologyBindGroup},
+    constants::SPHERE_RADIUS,
     resources::mantle_grid::MantleGrid,
 };
 
@@ -49,8 +50,8 @@ fn setup_edge_topology(
     for (i, length) in edge_lengths.iter_mut().enumerate() {
         let left_vertex_idx = edge_vertex_adjacency.indices()[i * 2] as usize;
         let right_vertex_idx = edge_vertex_adjacency.indices()[i * 2 + 1] as usize;
-        let left_vertex = grid.sphere().raw_points()[left_vertex_idx];
-        let right_vertex = grid.sphere().raw_points()[right_vertex_idx];
+        let left_vertex = grid.sphere().raw_points()[left_vertex_idx] * SPHERE_RADIUS;
+        let right_vertex = grid.sphere().raw_points()[right_vertex_idx] * SPHERE_RADIUS;
         *length = left_vertex.distance(right_vertex);
     }
 
