@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::{
     constants::SPHERE_RADIUS,
     resources::{
-        gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid, velocity::VelocitySync,
-        vertex_velocity::VertexVelocitySync,
+        gizmo_visibility::GizmoVisibility, mantle_grid::MantleGrid, selected_edge::SelectedEdge,
+        velocity::VelocitySync, vertex_velocity::VertexVelocitySync,
     },
 };
 
@@ -76,6 +76,7 @@ pub fn draw_velocity_arrows(
     grid: Res<MantleGrid>,
     velocity_sync: Res<VelocitySync>,
     visibility: Res<GizmoVisibility>,
+    selected_edge: Res<SelectedEdge>,
 ) {
     if !visibility.velocity_arrows {
         return;
@@ -118,7 +119,12 @@ pub fn draw_velocity_arrows(
 
         let [magnitude, angle] = velocity[edge_idx];
         let direction = angle.cos() * toward_v_lower + angle.sin() * toward_primary;
-        let color = if magnitude < 10.0 {
+
+        let is_selected = selected_edge.0 == Some(edge_idx);
+
+        let color = if is_selected {
+            Color::srgb(0.0, 1.0, 1.0)
+        } else if magnitude < 10.0 {
             Color::srgb(1.0, 0.5, 0.0)
         } else {
             Color::srgb(1.0, 1.0, 0.0)

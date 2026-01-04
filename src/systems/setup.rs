@@ -54,6 +54,7 @@ pub fn setup(
             zoom_lower_limit: 2.0 * SPHERE_RADIUS,
             pan_sensitivity: 0.0,
             radius: Some(SPHERE_RADIUS * 5.0),
+            button_orbit: MouseButton::Right,
             ..Default::default()
         },
         Transform::from_xyz(0.0, SPHERE_RADIUS / 5.0, 5.0 * SPHERE_RADIUS)

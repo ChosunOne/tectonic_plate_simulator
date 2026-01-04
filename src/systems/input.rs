@@ -1,9 +1,12 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use leafwing_input_manager::prelude::*;
 
-use crate::resources::{
-    active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
-    simulation_time::SimulationTime,
+use crate::{
+    constants::SPHERE_RADIUS,
+    resources::{
+        active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
+        mantle_grid::MantleGrid, selected_edge::SelectedEdge, simulation_time::SimulationTime,
+    },
 };
 
 #[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
@@ -28,6 +31,11 @@ pub enum SimulationAction {
     StepForward,
     SpeedUp,
     SlowDown,
+}
+
+#[derive(Actionlike, Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+pub enum SelectionAction {
+    Select,
 }
 
 pub fn toggle_gizmo_visibility(
@@ -140,4 +148,86 @@ pub fn handle_simulation_input(
             SimulationAction::SlowDown => sim_time.half_speed(),
         }
     }
+}
+
+#[must_use]
+pub fn selection_input_map() -> InputMap<SelectionAction> {
+    InputMap::new([(SelectionAction::Select, MouseButton::Left)])
+}
+
+pub fn handle_selection_input(
+    action_state: Res<ActionState<SelectionAction>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    grid: Res<MantleGrid>,
+    mut selected_edge: ResMut<SelectedEdge>,
+) {
+    if !action_state.just_pressed(&SelectionAction::Select) {
+        return;
+    }
+
+    let Ok(window) = windows.single() else {
+        return;
+    };
+
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    let o_dot_d = ray.origin.dot(ray.direction.as_vec3());
+    let o_dot_o = ray.origin.dot(ray.origin);
+    let r_squared = SPHERE_RADIUS * SPHERE_RADIUS;
+
+    let discriminant = o_dot_d * o_dot_d - (o_dot_o - r_squared);
+
+    if discriminant < 0.0 {
+        selected_edge.0 = None;
+        return;
+    }
+
+    let sqrt_discriminant = discriminant.sqrt();
+    let t1 = -o_dot_d - sqrt_discriminant;
+    let t2 = -o_dot_d + sqrt_discriminant;
+
+    let t = if t1 > 0.0 {
+        t1
+    } else if t2 > 0.0 {
+        t2
+    } else {
+        selected_edge.0 = None;
+        return;
+    };
+
+    let hit_point = ray.origin + t * ray.direction.as_vec3();
+
+    let points = grid.sphere().raw_points();
+    let edge_vertex_adjacency = grid.edge_vertex_adjacency();
+    let num_edges = edge_vertex_adjacency.len();
+
+    let mut nearest_edge = None;
+    let mut nearest_distance_sq = f32::MAX;
+
+    for edge_idx in 0..num_edges {
+        let edge_verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
+        let v_lower_pos = points[edge_verts[0]] * SPHERE_RADIUS;
+        let v_higher_pos = points[edge_verts[1]] * SPHERE_RADIUS;
+
+        let midpoint: Vec3 = ((v_lower_pos + v_higher_pos) / 2.0).into();
+        let distance_sq = (hit_point - midpoint).length_squared();
+
+        if distance_sq < nearest_distance_sq {
+            nearest_distance_sq = distance_sq;
+            nearest_edge = Some(edge_idx);
+        }
+    }
+
+    selected_edge.0 = nearest_edge;
 }

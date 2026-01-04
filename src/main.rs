@@ -13,7 +13,10 @@ use tectonic_plate_simulator::{
         vertex_divergence::VertexDivergencePlugin, vertex_pressure::VertexPressurePlugin,
         vertex_velocity::VertexVelocityPlugin, viscosity::ViscosityPlugin,
     },
-    resources::{active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility},
+    resources::{
+        active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
+        selected_edge::SelectedEdge,
+    },
     systems::{
         gizmos::{
             draw_triangle_grid, draw_triangle_grid_centers, draw_triangle_grid_neighbors,
@@ -21,9 +24,10 @@ use tectonic_plate_simulator::{
         },
         globe_visibility::update_globe_visibility,
         input::{
-            GizmoAction, MaterialAction, SimulationAction, gizmo_input_map,
-            handle_simulation_input, material_input_map, simulation_input_map,
-            toggle_active_material, toggle_gizmo_visibility,
+            GizmoAction, MaterialAction, SelectionAction, SimulationAction, gizmo_input_map,
+            handle_selection_input, handle_simulation_input, material_input_map,
+            selection_input_map, simulation_input_map, toggle_active_material,
+            toggle_gizmo_visibility,
         },
         setup::setup,
     },
@@ -35,6 +39,7 @@ fn main() {
         .add_plugins(InputManagerPlugin::<GizmoAction>::default())
         .add_plugins(InputManagerPlugin::<MaterialAction>::default())
         .add_plugins(InputManagerPlugin::<SimulationAction>::default())
+        .add_plugins(InputManagerPlugin::<SelectionAction>::default())
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(SwappableBindGroupPlugin)
         .add_plugins(SimParamsPlugin)
@@ -53,12 +58,15 @@ fn main() {
         .add_plugins(MaterialPlugin::<DivergenceMaterial>::default())
         .init_resource::<GizmoVisibility>()
         .init_resource::<ActiveMaterial>()
+        .init_resource::<SelectedEdge>()
         .init_resource::<ActionState<GizmoAction>>()
         .init_resource::<ActionState<MaterialAction>>()
         .init_resource::<ActionState<SimulationAction>>()
+        .init_resource::<ActionState<SelectionAction>>()
         .insert_resource(gizmo_input_map())
         .insert_resource(material_input_map())
         .insert_resource(simulation_input_map())
+        .insert_resource(selection_input_map())
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -66,6 +74,7 @@ fn main() {
                 toggle_gizmo_visibility,
                 toggle_active_material,
                 handle_simulation_input,
+                handle_selection_input,
                 update_globe_visibility,
                 draw_triangle_grid,
                 draw_triangle_grid_centers,

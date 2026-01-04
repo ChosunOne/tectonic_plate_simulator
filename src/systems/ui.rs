@@ -1,15 +1,19 @@
 use bevy::{
+    camera::visibility::Visibility,
     color::Color,
     ecs::{
         query::With,
         system::{Commands, Query, Res},
     },
     text::{TextColor, TextFont},
-    ui::{Node, PositionType, Val, widget::Text},
+    ui::{BackgroundColor, Node, PositionType, UiRect, Val, widget::Text},
 };
 
 use crate::{
-    components::ui::simulation::SimulationStatusText, resources::simulation_time::SimulationTime,
+    components::ui::{edge_info::EdgeInfoText, simulation::SimulationStatusText},
+    resources::{
+        selected_edge::SelectedEdge, simulation_time::SimulationTime, velocity::VelocitySync,
+    },
 };
 
 pub fn setup_simulation_ui(mut commands: Commands) {
@@ -57,4 +61,55 @@ fn format_speed(speed: f32) -> String {
         let denom = (1.0 / speed).round() as i32;
         format!("1/{denom}x")
     }
+}
+
+pub fn setup_edge_info_ui(mut commands: Commands) {
+    commands.spawn((
+        Text::new(""),
+        TextFont {
+            font_size: 18.0,
+            ..Default::default()
+        },
+        TextColor(Color::WHITE),
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            right: Val::Px(10.0),
+            padding: UiRect::all(Val::Px(10.0)),
+            ..Default::default()
+        },
+        Visibility::Hidden,
+        EdgeInfoText,
+    ));
+}
+
+pub fn update_edge_info_ui(
+    selected_edge: Res<SelectedEdge>,
+    velocity_sync: Res<VelocitySync>,
+    mut query: Query<(&mut Text, &mut Visibility), With<EdgeInfoText>>,
+) {
+    let Ok((mut text, mut visibility)) = query.single_mut() else {
+        return;
+    };
+
+    let Some(edge_idx) = selected_edge.0 else {
+        *visibility = Visibility::Hidden;
+        return;
+    };
+
+    *visibility = Visibility::Visible;
+
+    let Ok(velocity) = velocity_sync.0.lock() else {
+        **text = format!("Edge: {edge_idx}\n(velocity unavailable)");
+        return;
+    };
+
+    if edge_idx >= velocity.len() {
+        **text = format!("Edge: {edge_idx}\n(velocity unavailable)");
+        return;
+    }
+
+    let [magnitude, angle] = velocity[edge_idx];
+    **text = format!("Edge: {edge_idx}\nMagnitude: {magnitude:.4}\nAngle: {angle:.4} rad");
 }
