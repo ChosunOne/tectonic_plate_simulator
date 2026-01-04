@@ -35,6 +35,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
+        if sim_params.dt == 0.0 {
+                return;
+        }
+
         var sum: f32 = 0.0;
         for (var i: u32 = 0u; i < 3u; i++) {
                 let edge_idx = cell_edge_indices[cell_idx * 3u + i];

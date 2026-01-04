@@ -21,7 +21,7 @@ use bevy::{
 };
 use tectonic_plate_simulator::{
     components::render::{SwappableBindGroup, compute_pass::ComputePass},
-    plugins::swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
+    plugins::swappable_bind_group::{SwappableBindGroupPlugin, clear_step},
 };
 
 const BUFFER_SIZE: usize = 256;
@@ -85,7 +85,7 @@ impl Plugin for ChainedPassesResultsPlugin {
             Render,
             check_chained_passes_results
                 .in_set(RenderSystems::Cleanup)
-                .after(swap_bind_groups),
+                .after(clear_step),
         );
     }
 }

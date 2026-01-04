@@ -16,7 +16,7 @@ use bevy::{
 
 use crate::{
     components::render::{SwappableBindGroup, VelocityBindGroup},
-    plugins::swappable_bind_group::swap_bind_groups,
+    plugins::swappable_bind_group::clear_step,
     render::double_buffer::DoubleBuffer,
     resources::{mantle_grid::MantleGrid, velocity::VelocitySync},
 };
@@ -34,7 +34,7 @@ impl Plugin for VelocityPlugin {
             Render,
             sync_velocity_to_main
                 .in_set(RenderSystems::Cleanup)
-                .after(swap_bind_groups),
+                .after(clear_step),
         );
     }
 }

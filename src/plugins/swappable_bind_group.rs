@@ -42,7 +42,7 @@ pub fn swap_bind_groups(
     }
 }
 
-fn clear_step(sim_time: Option<Res<SimulationTime>>) {
+pub fn clear_step(sim_time: Option<Res<SimulationTime>>) {
     if let Some(st) = sim_time {
         st.clear_step();
     }

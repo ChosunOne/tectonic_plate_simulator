@@ -25,7 +25,7 @@ use bevy::{
 };
 use tectonic_plate_simulator::{
     components::render::swappable_bind_group::{BindGroupBuilder, SwappableBindGroup},
-    plugins::swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
+    plugins::swappable_bind_group::{SwappableBindGroupPlugin, clear_step},
     render::double_buffer::DoubleBuffer,
 };
 
@@ -103,7 +103,7 @@ impl Plugin for ComputeTestResultsPlugin {
             Render,
             check_compute_results
                 .in_set(RenderSystems::Cleanup)
-                .after(swap_bind_groups),
+                .after(clear_step),
         );
     }
 }

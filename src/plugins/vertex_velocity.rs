@@ -23,7 +23,7 @@ use crate::{
     },
     plugins::{
         divergence::{PhiVelocityPassLabel, setup_divergence},
-        swappable_bind_group::swap_bind_groups,
+        swappable_bind_group::clear_step,
     },
     resources::{mantle_grid::MantleGrid, vertex_velocity::VertexVelocitySync},
 };
@@ -47,7 +47,7 @@ impl Plugin for VertexVelocityPlugin {
             Render,
             sync_vertex_velocity_to_main
                 .in_set(RenderSystems::Cleanup)
-                .after(swap_bind_groups),
+                .after(clear_step),
         );
     }
 }
