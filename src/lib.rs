@@ -1,3 +1,5 @@
+use std::f32::consts::TAU;
+
 use bevy::math::Vec3;
 
 use crate::{constants::SPHERE_RADIUS, resources::mantle_grid::MantleGrid};
@@ -101,5 +103,30 @@ impl LocalFrame {
         let v_high = Vec3::from(points[edge_verts[1]] * SPHERE_RADIUS);
 
         (v_low, v_high)
+    }
+
+    /// Converts a compass bearing (in radians) to a local angle in this frame.
+    /// At the poles where north is undefined, returns 0.0
+    #[must_use]
+    pub fn bearing_to_local_angle(&self, bearing: f32) -> f32 {
+        let normal = self.origin.normalize();
+        let north_pole = Vec3::Y;
+
+        let toward_north_proj = north_pole - normal * normal.dot(north_pole);
+        let toward_north_proj_len = toward_north_proj.length();
+
+        if toward_north_proj_len < f32::EPSILON {
+            return 0.0;
+        }
+
+        let toward_north = toward_north_proj / toward_north_proj_len;
+        let toward_east = toward_north.cross(normal);
+
+        let world_dir = bearing.cos() * toward_north + bearing.sin() * toward_east;
+
+        let local_x = world_dir.dot(self.axis_x);
+        let local_y = world_dir.dot(self.axis_y);
+
+        (local_y.atan2(local_x) + TAU) % TAU
     }
 }

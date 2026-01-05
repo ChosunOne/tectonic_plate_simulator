@@ -1,4 +1,4 @@
-use std::f32::consts::TAU;
+use std::f32::consts::{PI, TAU};
 
 use bevy::{
     app::{App, Plugin},
@@ -15,6 +15,7 @@ use bevy::{
 };
 
 use crate::{
+    LocalFrame,
     components::render::{SwappableBindGroup, VelocityBindGroup},
     plugins::swappable_bind_group::clear_step,
     render::double_buffer::DoubleBuffer,
@@ -48,8 +49,10 @@ pub fn setup_velocity(
     let num_edges = grid.edge_cell_adjacency().len();
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
     for i in 0..num_edges {
-        let angle = i as f32 % TAU;
-        let magnitude = i as f32 / 100.0;
+        let frame = LocalFrame::from_edge(&grid, i);
+        let angle = frame.bearing_to_local_angle(PI / 2.0);
+        let latitude = (frame.origin.y / frame.origin.length()).asin();
+        let magnitude = 1000.0 * latitude.cos();
         velocity_data.push([magnitude, angle]);
     }
 

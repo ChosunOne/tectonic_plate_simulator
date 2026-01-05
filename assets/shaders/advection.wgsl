@@ -61,10 +61,15 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
 }
 
 fn interpolate_velocity(q: f32, vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
+        if abs(q) < EPS {
+                return vel_a;
+        }
+        if abs(1.0 - q) < EPS {
+                return vel_b;
+        }
         let va = vec2<f32>((1.0 - q) * vel_a.x, vel_a.y);
         let vb = vec2<f32>(q * vel_b.x, vel_b.y);
         return add_velocity(va, vb);
-
 }
 
 fn interpolate_velocity_with_offsets(q: f32, vel_a: vec2<f32>, vel_b: vec2<f32>, vel_a_offset: f32, vel_b_offset: f32) -> vec2<f32> {
@@ -84,9 +89,9 @@ fn compute_angles(base: u32, left: u32, right: u32) -> vec3<f32> {
 
         let left_base_angle = acos(
                 clamp((a_squared + b_squared - c_squared) /
-                (2 * a * b), -1.0, 1.0));
-        let right_base_angle = acos(clamp((a_squared + c_squared - b_squared) / (2 * a * c), -1.0, 1.0));
-        let apex_angle = acos(clamp((b_squared + c_squared - a_squared) / (2 * b * c), -1.0, 1.0));
+                (2.0 * a * b), -1.0, 1.0));
+        let right_base_angle = acos(clamp((a_squared + c_squared - b_squared) / (2.0 * a * c), -1.0, 1.0));
+        let apex_angle = acos(clamp((b_squared + c_squared - a_squared) / (2.0 * b * c), -1.0, 1.0));
 
         return vec3<f32>(left_base_angle, right_base_angle, apex_angle);
 }
@@ -98,13 +103,21 @@ fn compute_angle_to_apex_vertex(d: f32, base_edge: u32, angles: vec3<f32>) -> f3
 }
 
 // Gets the adjacent edges to this one in the indicated cell.
-// Returns (left_edge, right_edge)
+// Returns (left_edge, right_edge) where "left" is the direction 
+// to the left when facing the interior of the indicated cell, *not* the
+// left indicated by the edge direction.
 fn get_adjacent_edges(edge: u32, cell: u32) -> vec2<u32> {
-        var left_edge = edge;
-        var right_edge = edge;
+        var left_edge: u32;
+        var right_edge: u32;
+        let is_secondary = cell == edge_cell_indices[edge * 2u + 1u];
 
-        let left_vertex = edge_vertex_indices[edge * 2u];
-        let right_vertex = edge_vertex_indices[edge * 2u + 1u];
+        var left_vertex = edge_vertex_indices[edge * 2u];
+        var right_vertex = edge_vertex_indices[edge * 2u + 1u];
+        if is_secondary {
+                left_vertex = left_vertex ^ right_vertex;
+                right_vertex = left_vertex ^ right_vertex;
+                left_vertex = left_vertex ^ right_vertex;
+        }
 
         for (var i = 0u; i < 3u; i++) {
                 let other_edge = cell_edge_indices[cell * 3u + i];
@@ -130,8 +143,6 @@ fn subcell_crossing_distance(theta: f32, d: f32, base_edge: u32, cell: u32) -> v
         let right_edge = adjacent_edges.y;
 
         let base_edge_length = edge_lengths[base_edge];
-        let left_edge_length = edge_lengths[left_edge];
-        let right_edge_length = edge_lengths[right_edge];
 
         let angles = compute_angles(base_edge, left_edge, right_edge);
         let critical_angle = compute_angle_to_apex_vertex(d, base_edge, angles);
@@ -197,28 +208,27 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
         let left_velocity = velocity_in[edges.y];
         let right_velocity = velocity_in[edges.z];
 
-        let base_primary_cell = edge_cell_indices[edges.x * 2u];
         let base_secondary_cell = edge_cell_indices[edges.x * 2u + 1u];
 
         var base_offset = 0.0;
         if base_secondary_cell == cell {
-                base_offset = mod_tau(base_offset);
+                base_offset = mod_tau(base_offset - PI);
         }
 
         let left_primary_cell = edge_cell_indices[edges.y * 2u];
-        let left_secondary_cell = edge_cell_indices[edges.y * 2u + 1u];
-        var left_offset = angles.x;
+        var to_left_offset = angles.x;
         if left_primary_cell == cell {
-                left_offset = mod_tau(left_offset + PI);
+                to_left_offset = mod_tau(to_left_offset + PI);
         }
+        let from_left_offset = mod_tau(-to_left_offset);
 
         let right_primary_cell = edge_cell_indices[edges.z * 2u];
-        let right_secondary_cell = edge_cell_indices[edges.z * 2u + 1u];
 
-        var right_offset = mod_tau(-angles.y);
+        var to_right_offset = mod_tau(-angles.y);
         if right_primary_cell == cell {
-                right_offset = mod_tau(right_offset + PI);
+                to_right_offset = mod_tau(to_right_offset + PI);
         }
+        let from_right_offset = mod_tau(-to_right_offset);
 
         // The projection of `pos` to the base edge.
         let p_ab = base_midpoint - pos.x * cos(pos.y);
@@ -228,14 +238,14 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along base edge
                 if p_ab < base_midpoint {
                         let q = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
-                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, left_offset, base_offset);
+                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
                 } else {
                         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
-                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, right_offset);
+                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
                 }
         }
         let d_a = sqrt(p_ab * p_ab + d_1 * d_1);
-        let phi_a = acos(clamp((d_1 * d_1 + d_a * d_a - p_ab * p_ab) / (2 * d_1 * d_a), -1.0, 1.0));
+        let phi_a = acos(clamp((d_1 * d_1 + d_a * d_a - p_ab * p_ab) / (2.0 * d_1 * d_a), -1.0, 1.0));
         let phi_b = TAU / 4.0 - phi_a;
         let phi_c = angles.x - phi_b;
 
@@ -247,17 +257,17 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along the left edge
                 if p_ca < left_midpoint {
                         let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
-                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, right_offset, left_offset);
+                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
                 } else {
                         let q = (p_ca - left_midpoint) / (left_midpoint + base_midpoint);
-                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, left_offset, base_offset);
+                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
                 }
         }
         let d_c = sqrt(p_ca * p_ca + d_3 * d_3);
         let d_b = sqrt((base_edge_length - p_ab) * (base_edge_length - p_ab) + d_1 * d_1);
         let s = (d_b + d_c + right_edge_length) / 2.0;
         let a = sqrt(max(s * (s - d_b) * (s - d_c) * (s - right_edge_length), 0.0));
-        let d_2 = 2 * a / right_edge_length;
+        let d_2 = 2.0 * a / right_edge_length;
 
         // The projection of `pos` to the right edge
         let p_bc = right_edge_length - sqrt(max(d_c * d_c - d_2 * d_2, 0.0));
@@ -266,10 +276,10 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along the right edge
                 if p_bc < right_midpoint {
                         let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
-                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, right_offset);
+                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
                 } else {
                         let q = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
-                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, right_offset, left_offset);
+                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
                 }
         }
 
@@ -282,26 +292,26 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
 
         if p_ab < base_midpoint {
                 q1 = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
-                v1 = interpolate_velocity_with_offsets(q1, left_velocity, base_velocity, left_offset, base_offset);
+                v1 = interpolate_velocity_with_offsets(q1, left_velocity, base_velocity, from_left_offset, base_offset);
         } else {
                 q1 = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
-                v1 = interpolate_velocity_with_offsets(q1, base_velocity, right_velocity, base_offset, right_offset);
+                v1 = interpolate_velocity_with_offsets(q1, base_velocity, right_velocity, base_offset, from_right_offset);
         }
 
         if p_bc < right_midpoint {
                 q2 = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
-                v2 = interpolate_velocity_with_offsets(q2, base_velocity, right_velocity, base_offset, right_offset);
+                v2 = interpolate_velocity_with_offsets(q2, base_velocity, right_velocity, base_offset, from_right_offset);
         } else {
                 q2 = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
-                v2 = interpolate_velocity_with_offsets(q2, right_velocity, left_velocity, right_offset, left_offset);
+                v2 = interpolate_velocity_with_offsets(q2, right_velocity, left_velocity, from_right_offset, from_left_offset);
         }
 
         if p_ca < left_midpoint {
                 q3 = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
-                v3 = interpolate_velocity_with_offsets(q3, right_velocity, left_velocity, right_offset, left_offset);
+                v3 = interpolate_velocity_with_offsets(q3, right_velocity, left_velocity, from_right_offset, from_left_offset);
         } else {
                 q3 = (p_ca - left_midpoint) / (left_midpoint + base_midpoint);
-                v3 = interpolate_velocity_with_offsets(q3, left_velocity, base_velocity, left_offset, base_offset);
+                v3 = interpolate_velocity_with_offsets(q3, left_velocity, base_velocity, from_left_offset, base_offset);
         }
 
         let v = array<vec2<f32>, 3>(v1, v2, v3);
@@ -388,7 +398,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let departure_position = map_to_reference_frame(d, base_edge, vec2<f32>(remaining_mag, mod_tau(angle + angle_offset)));
         var interpolated_velocity = interpolate_edge_velocities(departure_position, angles, vec3<u32>(base_edge, left_edge, right_edge), cell);
-
         departure_out[edge_idx] = DepartureInfo(base_edge, cell, departure_position, interpolated_velocity, edge_velocity);
 
         interpolated_velocity.y = mod_tau(interpolated_velocity.y - angle_offset);
