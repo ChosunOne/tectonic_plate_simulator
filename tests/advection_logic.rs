@@ -253,7 +253,9 @@ fn shader_interpolate_edge_velocities(
 
     let d_1 = pos[0] * pos[1].sin();
     if d_1 < f32::EPSILON {
+        dbg!("DEGEN 1");
         if p_ab < base_midpoint {
+            dbg!("A");
             let q = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
             return shader_interpolate_velocity_with_offsets(
                 q,
@@ -263,6 +265,7 @@ fn shader_interpolate_edge_velocities(
                 base_offset,
             );
         }
+        dbg!("B");
         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
         return shader_interpolate_velocity_with_offsets(
             q,
@@ -283,6 +286,7 @@ fn shader_interpolate_edge_velocities(
     let p_ca = left_edge_length - d_a * phi_c.cos();
     let d_3 = d_a * phi_c.sin();
     if d_3 < f32::EPSILON {
+        dbg!("DEGEN 3");
         if p_ca < left_midpoint {
             let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
             return shader_interpolate_velocity_with_offsets(
@@ -314,6 +318,7 @@ fn shader_interpolate_edge_velocities(
     let p_bc = right_edge_length - (d_c * d_c - d_2 * d_2).max(0.0).sqrt();
 
     if d_2 < f32::EPSILON {
+        dbg!("DEGEN 2");
         if p_bc < right_midpoint {
             let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
             return shader_interpolate_velocity_with_offsets(
@@ -459,16 +464,16 @@ fn test_interior_interpolation_logic() {
     let grid = MantleGrid::new(20);
     let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().len()];
     // These three edges form a triangle
-    let base_edge = 233;
-    let left_edge = 229;
-    let right_edge = 10;
+    let base_edge = 4994;
+    let left_edge = 4420;
+    let right_edge = 4419;
     let base_frame = LocalFrame::from_edge(&grid, base_edge);
     let left_frame = LocalFrame::from_edge(&grid, left_edge);
     let right_frame = LocalFrame::from_edge(&grid, right_edge);
 
-    velocity[base_edge] = [1000.0, base_frame.bearing_to_local_angle(PI / 2.0)];
-    velocity[left_edge] = [1000.0, left_frame.bearing_to_local_angle(PI / 2.0)];
-    velocity[right_edge] = [1000.0, right_frame.bearing_to_local_angle(PI / 2.0)];
+    velocity[base_edge] = [998.2928, 2.1216];
+    velocity[left_edge] = [999.4724, 3.2298];
+    velocity[right_edge] = [998.4460, 4.1577];
 
     let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().len()];
     for (i, length) in edge_lengths.iter_mut().enumerate() {
@@ -489,7 +494,7 @@ fn test_interior_interpolation_logic() {
     let cell = grid.edge_cell_adjacency().indices()[base_edge * 2];
 
     let interpolated_velocity = shader_interpolate_edge_velocities(
-        [16.6667, 1.5708],
+        [16.6382, 5.2632],
         angles,
         [base_edge as u32, left_edge as u32, right_edge as u32],
         cell,
