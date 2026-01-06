@@ -196,6 +196,11 @@ fn map_to_reference_frame(d: f32, edge: u32, velocity: vec2<f32>) -> vec2<f32> {
 }
 
 fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u32>, cell: u32) -> vec2<f32> {
+        var mirror_result = pos.y > PI;
+        var pos_y = pos.y;
+        if mirror_result {
+                pos_y = TAU - pos.y;
+        }
         let base_edge_length = edge_lengths[edges.x];
         let left_edge_length = edge_lengths[edges.y];
         let right_edge_length = edge_lengths[edges.z];
@@ -238,10 +243,18 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along base edge
                 if p_ab < base_midpoint {
                         let q = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
-                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
+                        var v =  interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 } else {
                         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
-                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
+                        var v = interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 }
         }
         let d_a = sqrt(p_ab * p_ab + d_1 * d_1);
@@ -257,10 +270,18 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along the left edge
                 if p_ca < left_midpoint {
                         let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
-                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
+                        var v = interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 } else {
                         let q = (p_ca - left_midpoint) / (left_midpoint + base_midpoint);
-                        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
+                        var v = interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 }
         }
         let d_c = sqrt(p_ca * p_ca + d_3 * d_3);
@@ -276,10 +297,18 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along the right edge
                 if p_bc < right_midpoint {
                         let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
-                        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
+                        var v = interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 } else {
                         let q = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
-                        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
+                        var v = interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
+                        if mirror_result {
+                                v.y = mod_tau(PI + v.y);
+                        }
+                        return v;
                 }
         }
 
@@ -326,6 +355,10 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 var scaled_v = v[i];
                 scaled_v.x = scaled_v.x * ((1.0 / max(d[i], EPS)) / d_total);
                 vp = add_velocity(vp, scaled_v);
+        }
+
+        if mirror_result {
+                vp.y = mod_tau(PI + vp.y);
         }
 
         return vp;

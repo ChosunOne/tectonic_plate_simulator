@@ -52,7 +52,7 @@ pub fn setup_velocity(
         let frame = LocalFrame::from_edge(&grid, i);
         let angle = frame.bearing_to_local_angle(PI / 2.0);
         let latitude = (frame.origin.y / frame.origin.length()).asin();
-        let magnitude = 1000.0 * latitude.cos();
+        let magnitude = 100.0 * latitude.cos();
         velocity_data.push([magnitude, angle]);
     }
 

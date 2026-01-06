@@ -216,6 +216,13 @@ fn shader_interpolate_edge_velocities(
     velocity_in: &[[f32; 2]],
     edge_cell_indices: &[u32],
 ) -> [f32; 2] {
+    let pos_x = pos[0];
+    let mut pos_y = pos[1];
+    let mut mirror_result = false;
+    if pos_y > PI {
+        mirror_result = true;
+        pos_y = TAU - pos_y;
+    }
     let base_edge_length = edge_lengths[edges[0] as usize];
     let left_edge_length = edge_lengths[edges[1] as usize];
     let right_edge_length = edge_lengths[edges[2] as usize];
@@ -249,31 +256,39 @@ fn shader_interpolate_edge_velocities(
     }
     let from_right_offset = shader_mod_tau(-to_right_offset);
 
-    let p_ab = base_midpoint - pos[0] * pos[1].cos();
+    let p_ab = base_midpoint - pos_x * pos_y.cos();
 
-    let d_1 = pos[0] * pos[1].sin();
-    if d_1 < f32::EPSILON {
+    let d_1 = pos_x * pos_y.sin();
+    if d_1.abs() < f32::EPSILON {
         dbg!("DEGEN 1");
         if p_ab < base_midpoint {
             dbg!("A");
             let q = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
-            return shader_interpolate_velocity_with_offsets(
+            let mut v = shader_interpolate_velocity_with_offsets(
                 q,
                 left_velocity,
                 base_velocity,
                 from_left_offset,
                 base_offset,
             );
+            if mirror_result {
+                v[1] = shader_mod_tau(PI + v[1]);
+            }
+            return v;
         }
         dbg!("B");
         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
-        return shader_interpolate_velocity_with_offsets(
+        let mut v = shader_interpolate_velocity_with_offsets(
             q,
             base_velocity,
             right_velocity,
             base_offset,
             from_right_offset,
         );
+        if mirror_result {
+            v[1] = shader_mod_tau(PI + v[1]);
+        }
+        return v;
     }
 
     let d_a = (p_ab * p_ab + d_1 * d_1).sqrt();
@@ -285,26 +300,34 @@ fn shader_interpolate_edge_velocities(
 
     let p_ca = left_edge_length - d_a * phi_c.cos();
     let d_3 = d_a * phi_c.sin();
-    if d_3 < f32::EPSILON {
+    if d_3.abs() < f32::EPSILON {
         dbg!("DEGEN 3");
         if p_ca < left_midpoint {
             let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
-            return shader_interpolate_velocity_with_offsets(
+            let mut v = shader_interpolate_velocity_with_offsets(
                 q,
                 right_velocity,
                 left_velocity,
                 from_right_offset,
                 from_left_offset,
             );
+            if mirror_result {
+                v[1] = shader_mod_tau(PI + v[1]);
+            }
+            return v;
         }
         let q = (p_ca - left_midpoint) / (left_midpoint + base_midpoint);
-        return shader_interpolate_velocity_with_offsets(
+        let mut v = shader_interpolate_velocity_with_offsets(
             q,
             left_velocity,
             base_velocity,
             from_left_offset,
             base_offset,
         );
+        if mirror_result {
+            v[1] = shader_mod_tau(PI + v[1]);
+        }
+        return v;
     }
 
     let d_c = (p_ca * p_ca + d_3 * d_3).sqrt();
@@ -317,26 +340,35 @@ fn shader_interpolate_edge_velocities(
 
     let p_bc = right_edge_length - (d_c * d_c - d_2 * d_2).max(0.0).sqrt();
 
-    if d_2 < f32::EPSILON {
+    if d_2.abs() < f32::EPSILON {
         dbg!("DEGEN 2");
         if p_bc < right_midpoint {
             let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
-            return shader_interpolate_velocity_with_offsets(
+            let mut v = shader_interpolate_velocity_with_offsets(
                 q,
                 base_velocity,
                 right_velocity,
                 base_offset,
                 from_right_offset,
             );
+            if mirror_result {
+                v[1] = shader_mod_tau(PI + v[1]);
+            }
+            return v;
         }
         let q = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
-        return shader_interpolate_velocity_with_offsets(
+        let mut v = shader_interpolate_velocity_with_offsets(
             q,
             right_velocity,
             left_velocity,
             from_right_offset,
             from_left_offset,
         );
+        if mirror_result {
+            v[1] = shader_mod_tau(PI + v[1]);
+        }
+
+        return v;
     }
 
     let q1: f32;
@@ -456,6 +488,10 @@ fn shader_interpolate_edge_velocities(
         dbg!(vp[0]);
     }
 
+    if mirror_result {
+        vp[1] = shader_mod_tau(PI + vp[1]);
+    }
+
     vp
 }
 
@@ -465,8 +501,8 @@ fn test_interior_interpolation_logic() {
     let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().len()];
     // These three edges form a triangle
     let base_edge = 4994;
-    let left_edge = 4420;
-    let right_edge = 4419;
+    let left_edge = 4993;
+    let right_edge = 4992;
     let base_frame = LocalFrame::from_edge(&grid, base_edge);
     let left_frame = LocalFrame::from_edge(&grid, left_edge);
     let right_frame = LocalFrame::from_edge(&grid, right_edge);
@@ -491,7 +527,7 @@ fn test_interior_interpolation_logic() {
         &edge_lengths,
     );
 
-    let cell = grid.edge_cell_adjacency().indices()[base_edge * 2];
+    let cell = grid.edge_cell_adjacency().indices()[base_edge * 2 + 1];
 
     let interpolated_velocity = shader_interpolate_edge_velocities(
         [16.6382, 5.2632],

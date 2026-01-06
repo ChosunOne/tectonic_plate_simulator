@@ -1,6 +1,6 @@
 const PI: f32 = 3.14159265359;
 const TAU: f32 = 6.283185230718;
-const VISCOSITY: f32 = 0.000;
+const VISCOSITY: f32 = 0.001;
 const EPS: f32 = 1e-7;
 
 struct SimParams { dt: f32 }
