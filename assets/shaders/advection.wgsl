@@ -236,9 +236,9 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
         let from_right_offset = mod_tau(-to_right_offset);
 
         // The projection of `pos` to the base edge.
-        let p_ab = base_midpoint - pos.x * cos(pos.y);
+        let p_ab = base_midpoint - pos.x * cos(pos_y);
 
-        let d_1 = pos.x * sin(pos.y);
+        let d_1 = pos.x * sin(pos_y);
         if d_1 < EPS {
                 // Degenerate case, point is along base edge
                 if p_ab < base_midpoint {
