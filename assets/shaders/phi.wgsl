@@ -33,5 +33,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
 
         phi = phi / 3.0;
+
+        if abs(phi) < EPS {
+                phi_out[cell_idx] = 0.0;
+                return;
+        }
         phi_out[cell_idx] = phi;
 }
