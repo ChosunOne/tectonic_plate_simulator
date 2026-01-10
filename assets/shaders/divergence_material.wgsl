@@ -40,10 +40,11 @@ fn vertex(vertex: Vertex) -> VertexDivergenceOutput {
         let deviation = divergence - mid_divergence;
         let max_deviation = max(abs(max_divergence - mid_divergence), abs(min_divergence - mid_divergence));
 
-        if max_deviation > 0.01 {
+        if max_deviation > 0.00 {
                 let sign = sign(deviation);
                 let log_dev = sign * log(1.0 + abs(deviation)) / log(1.0 + max_deviation);
-                out.normalized_divergence = 0.5 + 0.5 * log_dev;
+                // out.normalized_divergence = 0.5 + 0.5 * log_dev;
+                out.normalized_divergence = (divergence - min_divergence) / (max_divergence - min_divergence);
         }
         else if max_deviation >= 0.0 {
                 out.normalized_divergence = 0.0;

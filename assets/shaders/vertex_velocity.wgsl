@@ -18,8 +18,12 @@ const EPS: f32 = 1.1920929e-7;
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
+@group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
 fn mod_tau(theta: f32) -> f32 {
+        if theta >= 0.0 && theta < TAU {
+                return theta;
+        }
         return (theta + TAU) % TAU;
 }
 

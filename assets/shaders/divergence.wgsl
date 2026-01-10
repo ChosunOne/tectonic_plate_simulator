@@ -21,6 +21,7 @@ struct SimParams { dt: f32 };
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
+@group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
 @group(3) @binding(0) var<uniform> sim_params: SimParams;
 
@@ -29,6 +30,9 @@ fn is_primary(cell_idx: u32, edge_idx: u32) -> bool {
 }
 
 fn mod_tau(theta: f32) -> f32 {
+        if theta >= 0.0 && theta < TAU {
+                return theta;
+        }
         return (theta + TAU) % TAU;
 }
 

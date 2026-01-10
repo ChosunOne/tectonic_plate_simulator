@@ -55,6 +55,35 @@ fn setup_edge_topology(
         *length = left_vertex.distance(right_vertex);
     }
 
+    let mut edge_centroid_distance = vec![0.0f32; edge_cell_adjacency.len()];
+    for (i, distance) in edge_centroid_distance.iter_mut().enumerate() {
+        let primary_cell = grid
+            .edge_cell_adjacency()
+            .get(i)
+            .next()
+            .expect("to have a primary cell");
+        let secondary_cell = grid
+            .edge_cell_adjacency()
+            .get(i)
+            .nth(1)
+            .expect("to have a secondary cell");
+        let primary_edges = grid
+            .cell_edge_adjacency()
+            .get(primary_cell)
+            .collect::<Vec<_>>();
+        let secondary_edges = grid
+            .cell_edge_adjacency()
+            .get(secondary_cell)
+            .collect::<Vec<_>>();
+
+        let primary_area = cell_area(&primary_edges, &edge_lengths);
+        let secondary_area = cell_area(&secondary_edges, &edge_lengths);
+
+        let h1 = 2.0 * primary_area / edge_lengths[i];
+        let h2 = 2.0 * secondary_area / edge_lengths[i];
+        *distance = (h1 + h2) / 3.0;
+    }
+
     let mut builder = SwappableBindGroup::builder();
     let visibility = ShaderStages::COMPUTE;
     let usage = BufferUsages::STORAGE | BufferUsages::COPY_SRC;
@@ -147,7 +176,24 @@ fn setup_edge_topology(
         usage,
         true,
     );
+    builder.add_buffer_data(
+        &edge_centroid_distance,
+        &render_device,
+        Some("edge_centroid_distance"),
+        visibility,
+        usage,
+        true,
+    );
 
     let swappable = builder.build(&render_device, Some("topology_bind_group"));
     commands.spawn((swappable, TopologyBindGroup));
+}
+
+fn cell_area(edges: &[usize], edge_lengths: &[f32]) -> f32 {
+    let a = edge_lengths[edges[0]];
+    let b = edge_lengths[edges[1]];
+    let c = edge_lengths[edges[2]];
+
+    let s = (a + b + c) / 2.0;
+    (s * (s - a) * (s - b) * s - c).sqrt()
 }

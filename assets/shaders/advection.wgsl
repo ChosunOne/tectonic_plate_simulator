@@ -26,6 +26,7 @@ struct DepartureInfo {
 @group(1) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
+@group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams;
 

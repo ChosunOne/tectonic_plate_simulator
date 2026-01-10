@@ -14,6 +14,7 @@
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
+@group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {

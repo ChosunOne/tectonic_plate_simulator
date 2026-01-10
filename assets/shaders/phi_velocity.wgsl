@@ -22,10 +22,14 @@ struct SimParams { dt: f32 }
 @group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
+@group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
 @group(3) @binding(0) var<uniform> sim_params: SimParams;
 
 fn mod_tau(theta: f32) -> f32 {
+        if theta >= 0.0 && theta < TAU {
+                return theta;
+        }
         return (theta + TAU) % TAU;
 }
 
@@ -53,6 +57,7 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
         return vec2<f32>(new_mag, new_angle);
 }
 
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let edge_idx = global_id.x;
@@ -62,19 +67,24 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
-        let primary_phi = phi_in[edge_cell_indices[edge_idx * 2u]];
-        let secondary_phi = phi_in[edge_cell_indices[edge_idx * 2u + 1u]];
+        let primary_cell = edge_cell_indices[edge_idx * 2u];
+        let secondary_cell = edge_cell_indices[edge_idx * 2u + 1u];
+
+        let primary_phi = phi_in[primary_cell];
+        let secondary_phi = phi_in[secondary_cell];
 
         if abs(primary_phi - secondary_phi) < EPS {
                 return;
         }
+
+        let d = edge_centroid_distance[edge_idx];
 
         var angle = PI / 2.0;
         if primary_phi < secondary_phi {
                 angle += PI;
         }
 
-        let mag = sim_params.dt * abs(primary_phi - secondary_phi) / RHO;
+        let mag = sim_params.dt * abs(primary_phi - secondary_phi) / (RHO * d);
 
         let vel_adjustment = vec2<f32>(mag, angle);
         velocity_out[edge_idx] = add_velocity(velocity_out[edge_idx], vel_adjustment);
