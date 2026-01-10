@@ -16,6 +16,20 @@
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 
+fn cell_area(cell: u32) -> f32 {
+        let base_edge = cell_edge_indices[cell * 3u];
+        let left_edge = cell_edge_indices[cell * 3u + 1u];
+        let right_edge = cell_edge_indices[cell * 3u + 2u];
+
+        let a = edge_lengths[base_edge];
+        let b = edge_lengths[left_edge];
+        let c = edge_lengths[right_edge];
+
+        let s = (a + b + c) / 2.0;
+
+        return sqrt(s * (s - a) * (s - b) * (s - c));
+}
+
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let vertex_idx = global_id.x;
@@ -28,10 +42,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let end = vertex_cell_offsets[vertex_idx + 1u];
 
         var sum = 0.0;
+        var area_sum = 0.0;
         for (var i = start; i < end; i++) {
                 let cell_idx = vertex_cell_indices[i];
-                sum += divergence[cell_idx];
+                let area = cell_area(cell_idx);
+                sum += divergence[cell_idx] * area;
+                area_sum += area;
         }
 
-        vertex_divergence[vertex_idx] = sum / f32(end - start);
+        vertex_divergence[vertex_idx] = sum / area_sum;
 }

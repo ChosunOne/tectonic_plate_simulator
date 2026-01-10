@@ -50,7 +50,7 @@ pub fn setup_velocity(
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
     for i in 0..num_edges {
         let frame = LocalFrame::from_edge(&grid, i);
-        let angle = frame.bearing_to_local_angle(PI / 3.0);
+        let angle = frame.bearing_to_local_angle(PI / 2.0);
         let latitude = (frame.origin.y / frame.origin.length()).asin();
         let magnitude = 100.0 * latitude.cos();
 

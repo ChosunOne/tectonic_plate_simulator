@@ -195,5 +195,5 @@ fn cell_area(edges: &[usize], edge_lengths: &[f32]) -> f32 {
     let c = edge_lengths[edges[2]];
 
     let s = (a + b + c) / 2.0;
-    (s * (s - a) * (s - b) * s - c).sqrt()
+    (s * (s - a) * (s - b) * (s - c)).sqrt()
 }
