@@ -351,11 +351,12 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
         var vp= vec2<f32>(0.0, 0.0);
         var d_total = 0.0;
         for (var i = 0u; i < 3u; i++) {
-                d_total += 1.0 / max(d[i], EPS);
+                d_total += edge_lengths[edges[i]] / max(d[i], EPS);
         }
         for (var i = 0u; i < 3u; i++) {
                 var scaled_v = v[i];
-                scaled_v.x = scaled_v.x * ((1.0 / max(d[i], EPS)) / d_total);
+                let weight = (edge_lengths[edges[i]] / max(d[i], EPS)) / d_total;
+                scaled_v.x = scaled_v.x * weight;
                 vp = add_velocity(vp, scaled_v);
         }
 

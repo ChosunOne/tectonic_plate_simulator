@@ -63,6 +63,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 return;
         }
 
+        divergence[cell_idx] = 0.0;
+
         var sum: f32 = 0.0;
         for (var i: u32 = 0u; i < 3u; i++) {
                 let edge_idx = cell_edge_indices[cell_idx * 3u + i];
@@ -71,6 +73,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 var angle = edge_velocity.y;
                 if !is_primary(cell_idx, edge_idx) {
                         angle = mod_tau(angle + PI);
+                }
+                if abs(sin(angle)) < EPS || abs(mag) < EPS {
+                        continue;
                 }
                 sum += mag * sin(angle) * edge_lengths[edge_idx];
         }
