@@ -5,8 +5,8 @@
     view_transformations::position_world_to_clip,
 }
 
-const PI: f32 = 3.14159265359;
-const TAU: f32 = 6.28318530718;
+const PI: f32 = 3.1415927;
+const TAU: f32 = 6.2831855;
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<storage, read> vertex_velocity: array<vec2<f32>>;
 

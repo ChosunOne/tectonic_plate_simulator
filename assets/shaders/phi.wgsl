@@ -1,4 +1,4 @@
-const EPS: f32 = 1.0e-7;
+const EPS: f32 = 1.1920929e-7;
 
 @group(0) @binding(0) var<storage, read> phi_in: array<f32>;
 @group(0) @binding(1) var<storage, read_write> phi_out: array<f32>;

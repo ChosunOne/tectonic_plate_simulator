@@ -1,10 +1,14 @@
 use std::f32::consts::{PI, TAU};
 
 use tectonic_plate_simulator::{
-    LocalFrame, constants::SPHERE_RADIUS, resources::mantle_grid::MantleGrid,
+    LocalFrame, constants::SPHERE_RADIUS, plugins::departure_info,
+    resources::mantle_grid::MantleGrid,
 };
 
 fn shader_mod_tau(theta: f32) -> f32 {
+    if theta >= 0.0 && theta < TAU {
+        return theta;
+    }
     (theta + TAU) % TAU
 }
 
@@ -161,6 +165,7 @@ fn shader_subcell_crossing_distance(
     let mut d_exit = 0.0;
 
     if theta > f32::EPSILON && theta <= critical_angle {
+        dbg!("A");
         let denom = (theta + left_base_angle).sin();
         if denom.abs() < f32::EPSILON || left_base_angle.sin().abs() < f32::EPSILON {
             return [0.0, 0.0];
@@ -168,6 +173,7 @@ fn shader_subcell_crossing_distance(
         l_exit = d * left_base_angle.sin() / denom;
         d_exit = l_exit * theta.sin() / left_base_angle.sin();
     } else if theta > f32::EPSILON && theta < PI {
+        dbg!("B");
         let denom = (theta - right_base_angle).sin();
         if denom.abs() < f32::EPSILON || right_base_angle.sin().abs() < f32::EPSILON {
             return [0.0, 0.0];
@@ -175,11 +181,15 @@ fn shader_subcell_crossing_distance(
         l_exit = (base_edge_length - d) * right_base_angle.sin() / denom;
         d_exit = l_exit * theta.sin() / right_base_angle.sin();
     } else if theta.abs() < f32::EPSILON {
+        dbg!("C");
         l_exit = d;
         d_exit = 0.0;
     } else if (theta - PI) <= f32::EPSILON {
+        dbg!("D");
         l_exit = base_edge_length - d;
         d_exit = 0.0;
+    } else {
+        dbg!("E");
     }
 
     [l_exit, d_exit]
@@ -216,11 +226,14 @@ fn shader_interpolate_edge_velocities(
     velocity_in: &[[f32; 2]],
     edge_cell_indices: &[u32],
 ) -> [f32; 2] {
-    let pos_x = pos[0];
     let mut pos_y = pos[1];
-    let mut mirror_result = false;
-    if pos_y > PI {
-        mirror_result = true;
+    let pos_x = pos[0];
+    dbg!(pos_x);
+    dbg!(pos_y);
+    dbg!(pos_y - PI);
+    let mirror_result = pos_y >= PI;
+    if mirror_result {
+        dbg!("MIRROR");
         pos_y = TAU - pos_y;
     }
     let base_edge_length = edge_lengths[edges[0] as usize];
@@ -239,6 +252,7 @@ fn shader_interpolate_edge_velocities(
 
     let mut base_offset = 0.0;
     if base_secondary_cell == cell {
+        dbg!("SHADER SECONDARY");
         base_offset = shader_mod_tau(base_offset - PI);
     }
 
@@ -250,6 +264,7 @@ fn shader_interpolate_edge_velocities(
     let from_left_offset = shader_mod_tau(-to_left_offset);
 
     let right_primary_cell = edge_cell_indices[edges[2] as usize * 2];
+
     let mut to_right_offset = shader_mod_tau(-angles[1]);
     if right_primary_cell == cell {
         to_right_offset = shader_mod_tau(to_right_offset + PI);
@@ -259,6 +274,7 @@ fn shader_interpolate_edge_velocities(
     let p_ab = base_midpoint - pos_x * pos_y.cos();
 
     let d_1 = pos_x * pos_y.sin();
+    dbg!(d_1);
     if d_1.abs() < f32::EPSILON {
         dbg!("DEGEN 1");
         if p_ab < base_midpoint {
@@ -278,6 +294,9 @@ fn shader_interpolate_edge_velocities(
         }
         dbg!("B");
         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
+        dbg!(q);
+        dbg!(base_offset);
+        dbg!(from_right_offset);
         let mut v = shader_interpolate_velocity_with_offsets(
             q,
             base_velocity,
@@ -286,6 +305,8 @@ fn shader_interpolate_edge_velocities(
             from_right_offset,
         );
         if mirror_result {
+            dbg!(v[1]);
+            dbg!("MIRROR APPLIED");
             v[1] = shader_mod_tau(PI + v[1]);
         }
         return v;
@@ -343,6 +364,7 @@ fn shader_interpolate_edge_velocities(
     if d_2.abs() < f32::EPSILON {
         dbg!("DEGEN 2");
         if p_bc < right_midpoint {
+            dbg!("A");
             let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
             let mut v = shader_interpolate_velocity_with_offsets(
                 q,
@@ -356,6 +378,7 @@ fn shader_interpolate_edge_velocities(
             }
             return v;
         }
+        dbg!("B");
         let q = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
         let mut v = shader_interpolate_velocity_with_offsets(
             q,
@@ -497,19 +520,25 @@ fn shader_interpolate_edge_velocities(
 
 #[test]
 fn test_interior_interpolation_logic() {
-    let grid = MantleGrid::new(20);
+    let grid = MantleGrid::new(100);
     let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().len()];
     // These three edges form a triangle
-    let base_edge = 4994;
-    let left_edge = 4993;
-    let right_edge = 4992;
+    let base_edge = 2785;
+    let primary_left_edge = 2784;
+    let primary_right_edge = 2786;
+    let secondary_left_edge = 2793;
+    let secondary_right_edge = 1940;
     let base_frame = LocalFrame::from_edge(&grid, base_edge);
-    let left_frame = LocalFrame::from_edge(&grid, left_edge);
-    let right_frame = LocalFrame::from_edge(&grid, right_edge);
+    let primary_left_frame = LocalFrame::from_edge(&grid, primary_left_edge);
+    let primary_right_frame = LocalFrame::from_edge(&grid, primary_right_edge);
 
-    velocity[base_edge] = [998.2928, 2.1216];
-    velocity[left_edge] = [999.4724, 3.2298];
-    velocity[right_edge] = [998.4460, 4.1577];
+    velocity[base_edge] = [17.09977341, 6.28318501];
+    velocity[primary_left_edge] = [16.71239471, 0.92208433];
+    velocity[primary_right_edge] = [16.72800827, 5.33526325];
+    velocity[secondary_left_edge] = [13.33704472, 1.00216007];
+    velocity[secondary_right_edge] = [15.19938850, 5.30937481];
+
+    let edge_velocity = velocity[base_edge];
 
     let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().len()];
     for (i, length) in edge_lengths.iter_mut().enumerate() {
@@ -520,6 +549,30 @@ fn test_interior_interpolation_logic() {
         *length = left_vertex.distance(right_vertex);
     }
 
+    let primary_cell = grid.edge_cell_adjacency().indices()[base_edge * 2];
+    let secondary_cell = grid.edge_cell_adjacency().indices()[base_edge * 2 + 1];
+    let mut cell = primary_cell;
+    let mut angle_offset = PI;
+    let mut d = edge_lengths[base_edge] / 2.0;
+    if shader_mod_tau(edge_velocity[1] + angle_offset) > PI {
+        dbg!("SECONDARY CELL");
+        cell = secondary_cell;
+        d = edge_lengths[base_edge] - d;
+    }
+    let edges = shader_get_adjacent_edges(
+        base_edge as u32,
+        cell,
+        grid.edge_cell_adjacency().indices(),
+        grid.edge_vertex_adjacency().indices(),
+        grid.cell_edge_adjacency().indices(),
+    );
+
+    let left_edge = edges[0];
+    let right_edge = edges[1];
+
+    dbg!(left_edge);
+    dbg!(right_edge);
+
     let angles = shader_compute_angles(
         base_edge as u32,
         left_edge as u32,
@@ -527,10 +580,41 @@ fn test_interior_interpolation_logic() {
         &edge_lengths,
     );
 
-    let cell = grid.edge_cell_adjacency().indices()[base_edge * 2 + 1];
+    let angle = edge_velocity[1];
+
+    let critical_angle =
+        shader_compute_angle_to_apex_vertex(d, base_edge as u32, angles, &edge_lengths);
+    let effective_angle = shader_mod_tau(angle + angle_offset);
+    let l_and_d = shader_subcell_crossing_distance(
+        effective_angle,
+        d,
+        base_edge as u32,
+        cell,
+        grid.edge_cell_adjacency().indices(),
+        grid.edge_vertex_adjacency().indices(),
+        grid.cell_edge_adjacency().indices(),
+        &edge_lengths,
+    );
+    let l_exit = l_and_d[0];
+    dbg!(angle);
+    dbg!(critical_angle);
+    dbg!(effective_angle);
+    dbg!(l_exit);
+
+    let remaining_mag = edge_velocity[0] * 1.0 / 60.0;
+    dbg!(remaining_mag);
+
+    let departure_position = shader_map_to_reference_frame(
+        d,
+        base_edge as u32,
+        [remaining_mag, shader_mod_tau(angle + angle_offset)],
+        &edge_lengths,
+    );
+    dbg!(&departure_position);
 
     let interpolated_velocity = shader_interpolate_edge_velocities(
-        [16.6382, 5.2632],
+        [0.28499624, 3.14159274],
+        // departure_position,
         angles,
         [base_edge as u32, left_edge as u32, right_edge as u32],
         cell,
@@ -539,5 +623,7 @@ fn test_interior_interpolation_logic() {
         grid.edge_cell_adjacency().indices(),
     );
 
-    assert_eq!(interpolated_velocity, velocity[base_edge]);
+    dbg!(&interpolated_velocity);
+    // assert_eq!(interpolated_velocity, velocity[base_edge]);
+    todo!()
 }

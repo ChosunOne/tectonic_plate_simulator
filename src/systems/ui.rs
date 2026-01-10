@@ -120,7 +120,7 @@ pub fn update_edge_info_ui(
     let [magnitude, angle] = velocity[edge_idx];
     let info = departure[edge_idx];
     **text = format!(
-        "Edge: {edge_idx}\nMagnitude: {magnitude:.4}\nAngle: {angle:.4} rad\n\nDeparture Info\nDep. Pos X: {:.4}\nDep. Pos Y: {:.4}\nInt. Magnitude: {:.4}\nInt. Angle: {:.4}\nLast Magnitude: {:.4}\nLast Angle: {:.4}",
+        "Edge: {edge_idx}\nMagnitude: {magnitude:.8}\nAngle: {angle:.8} rad\n\nDeparture Info\nDep. Pos X: {:.8}\nDep. Pos Y: {:.8}\nInt. Magnitude: {:.8}\nInt. Angle: {:.8}\nLast Magnitude: {:.8}\nLast Angle: {:.8}",
         info.pos[0],
         info.pos[1],
         info.interpolated_velocity[0],

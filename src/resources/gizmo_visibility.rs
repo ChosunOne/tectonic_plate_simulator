@@ -13,7 +13,7 @@ pub struct GizmoVisibility {
 impl Default for GizmoVisibility {
     fn default() -> Self {
         Self {
-            vertex_velocity_arrows: true,
+            vertex_velocity_arrows: false,
             velocity_arrows: true,
             triangle_grid: false,
             triangle_centers: false,
