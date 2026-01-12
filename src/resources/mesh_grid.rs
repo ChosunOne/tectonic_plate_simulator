@@ -43,12 +43,12 @@ pub struct VertexEdge;
 
 // NB: Structured this way to allow fast sharing between render and main world
 #[derive(Resource, Clone)]
-pub struct MantleGrid(Arc<MantleGridInner>);
+pub struct MeshGrid(Arc<MeshGridInner>);
 
-impl MantleGrid {
+impl MeshGrid {
     #[must_use]
     pub fn new(subdivisions: usize) -> Self {
-        Self(Arc::new(MantleGridInner::new(subdivisions)))
+        Self(Arc::new(MeshGridInner::new(subdivisions)))
     }
 
     #[must_use]
@@ -463,7 +463,7 @@ impl<T> From<&IcoSphere<T>> for Adjacency<VertexEdge> {
     }
 }
 
-struct MantleGridInner {
+struct MeshGridInner {
     pub cell_adjacency: Adjacency<Cell>,
     pub cell_edge_adjacency: Adjacency<CellEdge>,
     pub cells: Vec<CellData>,
@@ -475,15 +475,15 @@ struct MantleGridInner {
     pub vertex_angle_offsets: Vec<f32>,
 }
 
-impl ExtractResource for MantleGrid {
-    type Source = MantleGrid;
+impl ExtractResource for MeshGrid {
+    type Source = MeshGrid;
 
     fn extract_resource(source: &Self::Source) -> Self {
         source.clone()
     }
 }
 
-impl MantleGridInner {
+impl MeshGridInner {
     #[must_use]
     #[allow(clippy::too_many_lines)]
     pub fn new(subdivisions: usize) -> Self {

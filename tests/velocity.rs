@@ -19,11 +19,11 @@ use bevy::{
 use tectonic_plate_simulator::{
     components::render::{SwappableBindGroup, VelocityBindGroup},
     plugins::{
-        mantle_grid::MantleGridPlugin,
+        mesh_grid::MeshGridPlugin,
         swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
         velocity::VelocityPlugin,
     },
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 struct VelocityTestPlugin;
@@ -44,7 +44,7 @@ impl Plugin for VelocityTestPlugin {
 fn verify_velocity(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     velocity_query: Query<&SwappableBindGroup, With<VelocityBindGroup>>,
 ) {
     let Ok(velocity_bg) = velocity_query.single() else {
@@ -99,7 +99,7 @@ fn test_edge_velocity_gpu_buffers() {
             .disable::<WinitPlugin>(),
         ScheduleRunnerPlugin::run_loop(Duration::from_millis(16)),
         SwappableBindGroupPlugin,
-        MantleGridPlugin,
+        MeshGridPlugin,
         VelocityPlugin,
         VelocityTestPlugin,
     ));

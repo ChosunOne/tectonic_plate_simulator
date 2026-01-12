@@ -12,14 +12,14 @@ use bevy::{
 use crate::{
     components::render::{SwappableBindGroup, TopologyBindGroup},
     constants::SPHERE_RADIUS,
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
-pub struct MantleGridPlugin;
+pub struct MeshGridPlugin;
 
-impl Plugin for MantleGridPlugin {
+impl Plugin for MeshGridPlugin {
     fn build(&self, app: &mut App) {
-        let grid = MantleGrid::new(100);
+        let grid = MeshGrid::new(100);
         app.insert_resource(grid.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(grid);
@@ -29,7 +29,7 @@ impl Plugin for MantleGridPlugin {
 
 fn setup_edge_topology(
     mut commands: Commands,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     render_device: Res<RenderDevice>,
 ) {
     debug!("Setup edge topology");

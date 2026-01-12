@@ -1,8 +1,8 @@
-use tectonic_plate_simulator::resources::mantle_grid::MantleGrid;
+use tectonic_plate_simulator::resources::mesh_grid::MeshGrid;
 
 #[test]
 fn test_edge_count_euler_formula() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let num_vertices = grid.sphere().raw_points().len();
     let num_faces = grid.cells().len();
     let num_edges = grid.edge_cell_adjacency().len();
@@ -12,7 +12,7 @@ fn test_edge_count_euler_formula() {
 
 #[test]
 fn test_every_edge_has_two_cells() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let edge_cells = grid.edge_cell_adjacency();
 
     for edge_idx in 0..edge_cells.len() {
@@ -26,7 +26,7 @@ fn test_every_edge_has_two_cells() {
 
 #[test]
 fn test_every_edge_has_two_vertices() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let edge_vertices = grid.edge_vertex_adjacency();
 
     for edge_idx in 0..edge_vertices.len() {
@@ -40,7 +40,7 @@ fn test_every_edge_has_two_vertices() {
 
 #[test]
 fn test_edge_vertices_canonical_order() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let edge_vertices = grid.edge_vertex_adjacency();
 
     for edge_idx in 0..edge_vertices.len() {
@@ -57,7 +57,7 @@ fn test_edge_vertices_canonical_order() {
 
 #[test]
 fn test_every_cell_has_three_edges() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let cell_edges = grid.cell_edge_adjacency();
 
     for cell_idx in 0..grid.cells().len() {
@@ -71,7 +71,7 @@ fn test_every_cell_has_three_edges() {
 
 #[test]
 fn test_cell_edge_bidirectional_consistency() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let cell_edges = grid.cell_edge_adjacency();
     let edge_cells = grid.edge_cell_adjacency();
 
@@ -98,7 +98,7 @@ fn test_cell_edge_bidirectional_consistency() {
 
 #[test]
 fn test_is_secondary_derivation() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let cell_edges = grid.cell_edge_adjacency();
     let edge_cells = grid.edge_cell_adjacency();
 
@@ -124,7 +124,7 @@ fn test_is_secondary_derivation() {
 
 #[test]
 fn test_edge_cell_primary_ordering() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let edge_cells = grid.edge_cell_adjacency();
     let edge_vertices = grid.edge_vertex_adjacency();
 

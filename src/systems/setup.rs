@@ -8,7 +8,7 @@ use crate::{
         divergence_material::DivergenceMaterial, pressure_material::PressureMaterial,
         velocity_material::VelocityMaterial,
     },
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 pub fn setup(
@@ -18,7 +18,7 @@ pub fn setup(
     mut velocity_materials: ResMut<Assets<VelocityMaterial>>,
     mut divergence_materials: ResMut<Assets<DivergenceMaterial>>,
     asset_server: Res<AssetServer>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
 ) {
     let mesh = grid.mesh();
     let mesh_handle = meshes.add(mesh);

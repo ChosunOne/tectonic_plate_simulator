@@ -8,7 +8,7 @@ use bevy::{
 use crate::{
     components::render::{PressureBindGroup, SwappableBindGroup},
     render::double_buffer::DoubleBuffer,
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 /// Basic plugin for initializing pressure data
@@ -21,7 +21,7 @@ impl Plugin for PressurePlugin {
     }
 }
 
-fn setup_pressure(mut commands: Commands, grid: Res<MantleGrid>, render_device: Res<RenderDevice>) {
+fn setup_pressure(mut commands: Commands, grid: Res<MeshGrid>, render_device: Res<RenderDevice>) {
     debug!("Setup pressure");
     let num_cells = grid.cells().len();
     let pressure_data = vec![0.0f32; num_cells];

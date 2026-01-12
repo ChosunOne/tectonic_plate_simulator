@@ -18,7 +18,7 @@ use crate::{
     render::double_buffer::DoubleBuffer,
     resources::{
         departure_info::{DepartureInfo, DepartureInfoSync},
-        mantle_grid::MantleGrid,
+        mesh_grid::MeshGrid,
     },
 };
 
@@ -44,7 +44,7 @@ impl Plugin for DepartureInfoPlugin {
 
 pub fn setup_departure_info(
     mut commands: Commands,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     render_device: Res<RenderDevice>,
 ) {
     debug!("Setup departure info");

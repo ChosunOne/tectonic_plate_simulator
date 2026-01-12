@@ -4,8 +4,8 @@ use leafwing_input_manager::prelude::*;
 use crate::{
     constants::SPHERE_RADIUS,
     resources::{
-        active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility,
-        mantle_grid::MantleGrid, selected_edge::SelectedEdge, simulation_time::SimulationTime,
+        active_material::ActiveMaterial, gizmo_visibility::GizmoVisibility, mesh_grid::MeshGrid,
+        selected_edge::SelectedEdge, simulation_time::SimulationTime,
     },
 };
 
@@ -159,7 +159,7 @@ pub fn handle_selection_input(
     action_state: Res<ActionState<SelectionAction>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     mut selected_edge: ResMut<SelectedEdge>,
 ) {
     if !action_state.just_pressed(&SelectionAction::Select) {

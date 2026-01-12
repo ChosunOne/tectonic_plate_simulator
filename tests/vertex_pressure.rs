@@ -22,12 +22,12 @@ use tectonic_plate_simulator::{
         VertexPressureReductionBindGroup,
     },
     plugins::{
-        mantle_grid::MantleGridPlugin,
+        mesh_grid::MeshGridPlugin,
         pressure::PressurePlugin,
         swappable_bind_group::{SwappableBindGroupPlugin, swap_bind_groups},
         vertex_pressure::VertexPressurePlugin,
     },
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 struct VertexPressureTestPlugin;
@@ -48,7 +48,7 @@ impl Plugin for VertexPressureTestPlugin {
 fn verify_vertex_pressure(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     pressure_query: Query<&SwappableBindGroup, With<PressureBindGroup>>,
     vertex_pressure_query: Query<&SwappableBindGroup, With<VertexPressureBindGroup>>,
     vertex_pressure_reduction_query: Query<
@@ -153,7 +153,7 @@ fn test_vertex_pressure_computation() {
             .disable::<WinitPlugin>(),
         ScheduleRunnerPlugin::run_loop(Duration::from_millis(16)),
         SwappableBindGroupPlugin,
-        MantleGridPlugin,
+        MeshGridPlugin,
         PressurePlugin,
         VertexPressurePlugin,
         VertexPressureTestPlugin,

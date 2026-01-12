@@ -17,7 +17,7 @@ use crate::{
         VertexDivergenceReductionBindGroup, compute_pass::ComputePass,
     },
     plugins::divergence::{DivergencePassLabel, setup_divergence},
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RenderLabel)]
@@ -41,7 +41,7 @@ impl Plugin for VertexDivergencePlugin {
 
 fn setup_vertex_divergence(world: &mut World) {
     debug!("Setup vertex divergence");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let num_vertices = grid.vertex_cell_adjacency().len();
 
     let vertex_divergence_data = vec![0.0f32; num_vertices];

@@ -2,7 +2,7 @@ use std::f32::consts::TAU;
 
 use bevy::math::Vec3;
 
-use crate::{constants::SPHERE_RADIUS, resources::mantle_grid::MantleGrid};
+use crate::{constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid};
 
 pub mod components;
 pub mod constants;
@@ -26,7 +26,7 @@ impl LocalFrame {
     /// # Panics
     /// If there is no adjacent edge to the indicated vertex.
     #[must_use]
-    pub fn from_vertex(grid: &MantleGrid, vertex_idx: usize) -> Self {
+    pub fn from_vertex(grid: &MeshGrid, vertex_idx: usize) -> Self {
         let points = grid.sphere().raw_points();
         let origin = Vec3::from(SPHERE_RADIUS * points[vertex_idx]);
         let normal = origin.normalize();
@@ -59,7 +59,7 @@ impl LocalFrame {
     }
 
     #[must_use]
-    pub fn from_edge(grid: &MantleGrid, edge_idx: usize) -> Self {
+    pub fn from_edge(grid: &MeshGrid, edge_idx: usize) -> Self {
         let (v_low, v_high) = Self::get_edge_verts(grid, edge_idx);
 
         let origin = (v_low + v_high) / 2.0;
@@ -93,7 +93,7 @@ impl LocalFrame {
         self.origin + local_x * self.axis_x + local_y * self.axis_y
     }
 
-    fn get_edge_verts(grid: &MantleGrid, edge_idx: usize) -> (Vec3, Vec3) {
+    fn get_edge_verts(grid: &MeshGrid, edge_idx: usize) -> (Vec3, Vec3) {
         let points = grid.sphere().raw_points();
         let edge_verts = grid
             .edge_vertex_adjacency()

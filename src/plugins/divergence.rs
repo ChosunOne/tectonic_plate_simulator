@@ -14,7 +14,7 @@ use crate::{
         TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
     },
     plugins::advection::{AdvectionPassLabel, setup_advection},
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
@@ -44,7 +44,7 @@ impl Plugin for DivergencePlugin {
 
 pub fn setup_divergence(world: &mut World) {
     debug!("Setup divergence plugin");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let divergence_data = vec![0.0f32; grid.cells().len()];
     let phi_data = vec![0.0f32; grid.cells().len()];
     let num_cells = grid.cells().len();

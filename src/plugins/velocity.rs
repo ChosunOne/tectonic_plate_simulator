@@ -19,7 +19,7 @@ use crate::{
     components::render::{SwappableBindGroup, VelocityBindGroup},
     plugins::swappable_bind_group::clear_step,
     render::double_buffer::DoubleBuffer,
-    resources::{mantle_grid::MantleGrid, velocity::VelocitySync},
+    resources::{mesh_grid::MeshGrid, velocity::VelocitySync},
 };
 
 pub struct VelocityPlugin;
@@ -42,7 +42,7 @@ impl Plugin for VelocityPlugin {
 
 pub fn setup_velocity(
     mut commands: Commands,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     render_device: Res<RenderDevice>,
 ) {
     debug!("Setup velocity");
@@ -50,8 +50,12 @@ pub fn setup_velocity(
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
     for i in 0..num_edges {
         let frame = LocalFrame::from_edge(&grid, i);
-        let angle = frame.bearing_to_local_angle(PI / 2.0);
         let latitude = (frame.origin.y / frame.origin.length()).asin();
+
+        let angle = frame.bearing_to_local_angle(PI / 2.0);
+        // } else {
+        //     frame.bearing_to_local_angle(3.0 * PI / 2.0)
+        // };
         let magnitude = 100.0 * latitude.cos();
 
         // let magnitude;

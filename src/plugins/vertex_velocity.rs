@@ -25,7 +25,7 @@ use crate::{
         divergence::{PhiVelocityPassLabel, setup_divergence},
         swappable_bind_group::clear_step,
     },
-    resources::{mantle_grid::MantleGrid, vertex_velocity::VertexVelocitySync},
+    resources::{mesh_grid::MeshGrid, vertex_velocity::VertexVelocitySync},
 };
 
 pub struct VertexVelocityPlugin;
@@ -54,7 +54,7 @@ impl Plugin for VertexVelocityPlugin {
 
 fn setup_vertex_velocity(world: &mut World) {
     debug!("Setup vertex velocity");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let vertex_edge_adjacency = grid.vertex_edge_adjacency();
     let num_vertices = vertex_edge_adjacency.len();
     let vertex_velocity_data = vec![[0.0f32, 0.0f32]; num_vertices];
@@ -124,7 +124,7 @@ fn setup_vertex_velocity(world: &mut World) {
 fn sync_vertex_velocity_to_main(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     vertex_velocity_query: Query<&SwappableBindGroup, With<VertexVelocityBindGroup>>,
     vertex_velocity_sync: Res<VertexVelocitySync>,
 ) {

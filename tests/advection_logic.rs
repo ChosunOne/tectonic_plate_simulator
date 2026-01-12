@@ -1,8 +1,7 @@
 use std::f32::consts::{PI, TAU};
 
 use tectonic_plate_simulator::{
-    LocalFrame, constants::SPHERE_RADIUS, plugins::departure_info,
-    resources::mantle_grid::MantleGrid,
+    LocalFrame, constants::SPHERE_RADIUS, plugins::departure_info, resources::mesh_grid::MeshGrid,
 };
 
 fn shader_mod_tau(theta: f32) -> f32 {
@@ -520,7 +519,7 @@ fn shader_interpolate_edge_velocities(
 
 #[test]
 fn test_interior_interpolation_logic() {
-    let grid = MantleGrid::new(100);
+    let grid = MeshGrid::new(100);
     let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().len()];
     // These three edges form a triangle
     let base_edge = 2785;

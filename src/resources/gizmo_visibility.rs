@@ -14,7 +14,7 @@ impl Default for GizmoVisibility {
     fn default() -> Self {
         Self {
             vertex_velocity_arrows: false,
-            velocity_arrows: true,
+            velocity_arrows: false,
             triangle_grid: false,
             triangle_centers: false,
             triangle_neighbors: false,

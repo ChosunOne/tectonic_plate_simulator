@@ -4,15 +4,14 @@ use crate::{
     LocalFrame,
     constants::SPHERE_RADIUS,
     resources::{
-        departure_info::DepartureInfoSync, gizmo_visibility::GizmoVisibility,
-        mantle_grid::MantleGrid, selected_edge::SelectedEdge, velocity::VelocitySync,
-        vertex_velocity::VertexVelocitySync,
+        departure_info::DepartureInfoSync, gizmo_visibility::GizmoVisibility, mesh_grid::MeshGrid,
+        selected_edge::SelectedEdge, velocity::VelocitySync, vertex_velocity::VertexVelocitySync,
     },
 };
 
 pub fn draw_triangle_grid(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     visibility: Res<GizmoVisibility>,
 ) {
     if !visibility.triangle_grid {
@@ -40,7 +39,7 @@ pub fn draw_triangle_grid(
 
 pub fn draw_triangle_grid_centers(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     visibility: Res<GizmoVisibility>,
 ) {
     if !visibility.triangle_centers {
@@ -55,7 +54,7 @@ pub fn draw_triangle_grid_centers(
 
 pub fn draw_triangle_grid_neighbors(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     visibility: Res<GizmoVisibility>,
 ) {
     if !visibility.triangle_neighbors {
@@ -75,7 +74,7 @@ pub fn draw_triangle_grid_neighbors(
 
 pub fn draw_velocity_arrows(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     velocity_sync: Res<VelocitySync>,
     visibility: Res<GizmoVisibility>,
     selected_edge: Res<SelectedEdge>,
@@ -117,7 +116,7 @@ pub fn draw_velocity_arrows(
 
 pub fn draw_vertex_velocity_arrows(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     vertex_velocity_sync: Res<VertexVelocitySync>,
     visibility: Res<GizmoVisibility>,
 ) {
@@ -155,7 +154,7 @@ pub fn draw_vertex_velocity_arrows(
 
 pub fn draw_departure_gizmo(
     mut gizmos: Gizmos,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     departure_sync: Res<DepartureInfoSync>,
     selected_edge: Res<SelectedEdge>,
 ) {

@@ -8,7 +8,7 @@ use tectonic_plate_simulator::{
     },
     plugins::{
         advection::AdvectionPlugin, departure_info::DepartureInfoPlugin,
-        divergence::DivergencePlugin, mantle_grid::MantleGridPlugin, pressure::PressurePlugin,
+        divergence::DivergencePlugin, mesh_grid::MeshGridPlugin, pressure::PressurePlugin,
         sim_params::SimParamsPlugin, swappable_bind_group::SwappableBindGroupPlugin, ui::UiPlugin,
         velocity::VelocityPlugin, vertex_divergence::VertexDivergencePlugin,
         vertex_pressure::VertexPressurePlugin, vertex_velocity::VertexVelocityPlugin,
@@ -44,7 +44,7 @@ fn main() {
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(SwappableBindGroupPlugin)
         .add_plugins(SimParamsPlugin)
-        .add_plugins(MantleGridPlugin)
+        .add_plugins(MeshGridPlugin)
         .add_plugins(PressurePlugin)
         .add_plugins(VertexPressurePlugin)
         .add_plugins(VelocityPlugin)

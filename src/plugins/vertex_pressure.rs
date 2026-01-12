@@ -16,7 +16,7 @@ use crate::{
         PressureBindGroup, SwappableBindGroup, VertexPressureBindGroup,
         VertexPressureReductionBindGroup, compute_pass::ComputePass,
     },
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 pub struct VertexPressurePlugin;
@@ -37,7 +37,7 @@ impl Plugin for VertexPressurePlugin {
 #[allow(clippy::cast_possible_truncation)]
 fn setup_vertex_pressure(world: &mut World) {
     debug!("Setup vertex pressure");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let adjacency = grid.vertex_cell_adjacency();
     let num_vertices = adjacency.len();
 

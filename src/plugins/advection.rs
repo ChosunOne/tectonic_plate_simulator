@@ -14,7 +14,7 @@ use crate::{
         compute_pass::ComputePass,
     },
     plugins::viscosity::{ViscosityPassLabel, setup_viscosity},
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
@@ -32,7 +32,7 @@ impl Plugin for AdvectionPlugin {
 
 pub fn setup_advection(world: &mut World) {
     debug!("Setup advection");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let num_edges = grid.edge_cell_adjacency().len();
     let num_workgroups = (num_edges as u32).div_ceil(64);
 

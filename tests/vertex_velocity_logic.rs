@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, TAU};
 
-use tectonic_plate_simulator::{constants::SPHERE_RADIUS, resources::mantle_grid::MantleGrid};
+use tectonic_plate_simulator::{constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid};
 
 fn mod_tau(theta: f32) -> f32 {
     (theta + TAU) % TAU
@@ -157,7 +157,7 @@ fn vertex_velocity(
 
 #[test]
 fn test_vertex_velocity_logic() {
-    let grid = MantleGrid::new(10);
+    let grid = MeshGrid::new(10);
     let num_edges = grid.edge_cell_adjacency().len();
 
     let mut velocity = vec![[0.0, 0.0]; num_edges];

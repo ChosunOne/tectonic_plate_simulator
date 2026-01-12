@@ -1,9 +1,9 @@
 use bevy::math::Vec3;
-use tectonic_plate_simulator::resources::mantle_grid::MantleGrid;
+use tectonic_plate_simulator::resources::mesh_grid::MeshGrid;
 
 #[test]
 fn vertex_edge_adjacency_exists() {
-    let grid = MantleGrid::new(20);
+    let grid = MeshGrid::new(20);
     let vertex_edge = grid.vertex_edge_adjacency();
     let num_vertices = grid.sphere().raw_points().len();
 

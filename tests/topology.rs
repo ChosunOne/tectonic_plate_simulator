@@ -18,8 +18,8 @@ use bevy::{
 };
 use tectonic_plate_simulator::{
     components::render::{SwappableBindGroup, TopologyBindGroup},
-    plugins::{mantle_grid::MantleGridPlugin, swappable_bind_group::SwappableBindGroupPlugin},
-    resources::mantle_grid::MantleGrid,
+    plugins::{mesh_grid::MeshGridPlugin, swappable_bind_group::SwappableBindGroupPlugin},
+    resources::mesh_grid::MeshGrid,
 };
 
 struct TopologyTestPlugin;
@@ -34,7 +34,7 @@ impl Plugin for TopologyTestPlugin {
 fn verify_topology(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    grid: Res<MantleGrid>,
+    grid: Res<MeshGrid>,
     topology_query: Query<&SwappableBindGroup, With<TopologyBindGroup>>,
 ) {
     let Ok(topology_bg) = topology_query.single() else {
@@ -121,7 +121,7 @@ fn test_topology_gpu_buffers() {
             .disable::<WinitPlugin>(),
         ScheduleRunnerPlugin::run_loop(Duration::from_millis(16)),
         SwappableBindGroupPlugin,
-        MantleGridPlugin,
+        MeshGridPlugin,
         TopologyTestPlugin,
     ));
 

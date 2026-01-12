@@ -12,7 +12,7 @@ use crate::{
     components::render::{
         SimParamsBindGroup, TopologyBindGroup, VelocityBindGroup, compute_pass::ComputePass,
     },
-    resources::mantle_grid::MantleGrid,
+    resources::mesh_grid::MeshGrid,
 };
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, RenderLabel)]
@@ -30,7 +30,7 @@ impl Plugin for ViscosityPlugin {
 
 pub fn setup_viscosity(world: &mut World) {
     debug!("Setup viscosity");
-    let grid = world.resource::<MantleGrid>();
+    let grid = world.resource::<MeshGrid>();
     let num_edges = grid.edge_cell_adjacency().len();
     let num_workgroups = (num_edges as u32).div_ceil(64);
 
