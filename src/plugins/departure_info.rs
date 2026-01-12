@@ -58,7 +58,7 @@ pub fn setup_departure_info(
 
     let mut builder = SwappableBindGroup::builder();
     builder.add_compute_double(departure_buffer);
-    let swappable = builder.build(&render_device, Some("departure_bind_group"));
+    let swappable = builder.build(&render_device, "departure_bind_group");
 
     commands.spawn((swappable, DepartureBindGroup));
 }

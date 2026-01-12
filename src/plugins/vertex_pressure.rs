@@ -85,7 +85,7 @@ fn setup_vertex_pressure(world: &mut World) {
         false,
     );
     let vertex_pressure_reduction_bind_group =
-        builder.build(render_device, Some("vertex_pressure_reduction_bind_group"));
+        builder.build(render_device, "vertex_pressure_reduction_bind_group");
     world.spawn((
         vertex_pressure_reduction_bind_group,
         VertexPressureReductionBindGroup,

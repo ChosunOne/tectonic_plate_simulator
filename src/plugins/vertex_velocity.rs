@@ -99,7 +99,7 @@ fn setup_vertex_velocity(world: &mut World) {
         false,
     );
     let vertex_velocity_reduction_bind_group =
-        builder.build(render_device, Some("vertex_velocity_reduction_bind_group"));
+        builder.build(render_device, "vertex_velocity_reduction_bind_group");
     world.spawn((
         vertex_velocity_reduction_bind_group,
         VertexVelocityReductionBindGroup,

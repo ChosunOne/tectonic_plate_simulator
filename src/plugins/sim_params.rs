@@ -75,7 +75,7 @@ pub fn setup_sim_params(mut commands: Commands, render_device: Res<RenderDevice>
 
     let mut builder = SwappableBindGroup::builder();
     builder.add_uniform(buffer, ShaderStages::COMPUTE);
-    let swappable = builder.build(&render_device, Some("sim_params_bind_group"));
+    let swappable = builder.build(&render_device, "sim_params_bind_group");
 
     commands.spawn((swappable, SimParamsBindGroup));
 }

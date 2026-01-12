@@ -185,7 +185,7 @@ fn setup_edge_topology(
         true,
     );
 
-    let swappable = builder.build(&render_device, Some("topology_bind_group"));
+    let swappable = builder.build(&render_device, "topology_bind_group");
     commands.spawn((swappable, TopologyBindGroup));
 }
 

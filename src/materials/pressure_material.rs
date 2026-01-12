@@ -8,9 +8,9 @@ use bevy::{
     reflect::TypePath,
     render::{
         render_resource::{
-            AsBindGroup, AsBindGroupError, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry,
-            BindingResources, BindingType, BufferBindingType, PreparedBindGroup, ShaderStages,
-            UnpreparedBindGroup,
+            AsBindGroup, AsBindGroupError, BindGroupEntry, BindGroupLayout,
+            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResources, BindingType,
+            BufferBindingType, PipelineCache, PreparedBindGroup, ShaderStages, UnpreparedBindGroup,
         },
         renderer::RenderDevice,
     },
@@ -32,6 +32,60 @@ type PressureBoundsQuery =
 impl AsBindGroup for PressureMaterial {
     type Data = ();
     type Param = (VertexPressureQuery, PressureBoundsQuery);
+
+    fn label() -> &'static str {
+        "pressure_material"
+    }
+
+    fn as_bind_group(
+        &self,
+        layout_descriptor: &BindGroupLayoutDescriptor,
+        render_device: &RenderDevice,
+        cache: &PipelineCache,
+        (vertex_pressure_query, vertex_pressure_bounds_query): &mut SystemParamItem<
+            '_,
+            '_,
+            Self::Param,
+        >,
+    ) -> Result<PreparedBindGroup, AsBindGroupError> {
+        let vertex_pressure_bind_group = vertex_pressure_query
+            .single()
+            .map_err(|_| AsBindGroupError::RetryNextUpdate)?;
+
+        let vertex_pressure_buffer = vertex_pressure_bind_group
+            .get_buffer(2)
+            .ok_or(AsBindGroupError::RetryNextUpdate)?;
+
+        let vertex_pressure_bounds_bind_group = vertex_pressure_bounds_query
+            .single()
+            .map_err(|_| AsBindGroupError::RetryNextUpdate)?;
+
+        let vertex_pressure_bounds_buffer = vertex_pressure_bounds_bind_group
+            .get_buffer(1)
+            .ok_or(AsBindGroupError::RetryNextUpdate)?;
+
+        let layout = cache.get_bind_group_layout(layout_descriptor);
+
+        let bind_group = render_device.create_bind_group(
+            Some("pressure_material_bind_group"),
+            &layout,
+            &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: vertex_pressure_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: vertex_pressure_bounds_buffer.as_entire_binding(),
+                },
+            ],
+        );
+
+        Ok(PreparedBindGroup {
+            bindings: BindingResources(vec![]),
+            bind_group,
+        })
+    }
 
     fn bind_group_data(&self) -> Self::Data {}
 
@@ -78,53 +132,6 @@ impl AsBindGroup for PressureMaterial {
                 count: None,
             },
         ]
-    }
-
-    fn as_bind_group(
-        &self,
-        layout: &BindGroupLayout,
-        render_device: &RenderDevice,
-        (vertex_pressure_query, vertex_pressure_bounds_query): &mut SystemParamItem<
-            '_,
-            '_,
-            Self::Param,
-        >,
-    ) -> Result<PreparedBindGroup, AsBindGroupError> {
-        let vertex_pressure_bind_group = vertex_pressure_query
-            .single()
-            .map_err(|_| AsBindGroupError::RetryNextUpdate)?;
-
-        let vertex_pressure_buffer = vertex_pressure_bind_group
-            .get_buffer(2)
-            .ok_or(AsBindGroupError::RetryNextUpdate)?;
-
-        let vertex_pressure_bounds_bind_group = vertex_pressure_bounds_query
-            .single()
-            .map_err(|_| AsBindGroupError::RetryNextUpdate)?;
-
-        let vertex_pressure_bounds_buffer = vertex_pressure_bounds_bind_group
-            .get_buffer(1)
-            .ok_or(AsBindGroupError::RetryNextUpdate)?;
-
-        let bind_group = render_device.create_bind_group(
-            Some("pressure_material_bind_group"),
-            layout,
-            &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: vertex_pressure_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: vertex_pressure_bounds_buffer.as_entire_binding(),
-                },
-            ],
-        );
-
-        Ok(PreparedBindGroup {
-            bindings: BindingResources(vec![]),
-            bind_group,
-        })
     }
 }
 

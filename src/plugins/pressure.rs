@@ -31,7 +31,7 @@ fn setup_pressure(mut commands: Commands, grid: Res<MeshGrid>, render_device: Re
 
     let mut builder = SwappableBindGroup::builder();
     builder.add_compute_double(pressure_buffer);
-    let swappable = builder.build(&render_device, Some("pressure_bind_group"));
+    let swappable = builder.build(&render_device, "pressure_bind_group");
 
     commands.spawn((swappable, PressureBindGroup));
 }

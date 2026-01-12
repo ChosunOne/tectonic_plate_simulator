@@ -2,9 +2,10 @@ use bevy::{
     ecs::component::Component,
     render::{
         render_resource::{
-            BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingType, Buffer,
-            BufferBindingType, BufferDescriptor, BufferInitDescriptor, BufferUsages,
-            CommandEncoderDescriptor, MapMode, PollType, ShaderStages,
+            BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+            BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
+            BufferInitDescriptor, BufferUsages, CommandEncoderDescriptor, MapMode, PollType,
+            ShaderStages,
         },
         renderer::{RenderDevice, RenderQueue},
     },
@@ -42,7 +43,7 @@ impl BindGroupBuilder {
     }
 
     #[must_use]
-    pub fn build(self, render_device: &RenderDevice, label: Option<&str>) -> SwappableBindGroup {
+    pub fn build(self, render_device: &RenderDevice, label: &str) -> SwappableBindGroup {
         let mut layout_entries = Vec::new();
         let mut binding_index = 0u32;
         let mut buffers = vec![];
@@ -113,22 +114,25 @@ impl BindGroupBuilder {
             }
         }
 
+        let layout_descriptor =
+            BindGroupLayoutDescriptor::new(format!("{label}_descriptor"), &layout_entries);
         let layout = render_device.create_bind_group_layout(label, &layout_entries);
-        let label_a = label.map(|l| format!("{l}_a"));
+        let label_a = format!("{label}_a");
         let unswapped_bind_group =
-            self.build_bind_group(render_device, &layout, label_a.as_deref(), false);
+            self.build_bind_group(render_device, &layout, label_a.as_str(), false);
         let bind_groups = if self.double_buffers.is_empty() {
             vec![unswapped_bind_group]
         } else {
-            let label_b = label.map(|l| format!("{l}_b"));
+            let label_b = format!("{label}_b");
             let swapped_bind_group =
-                self.build_bind_group(render_device, &layout, label_b.as_deref(), true);
+                self.build_bind_group(render_device, &layout, label_b.as_str(), true);
             vec![unswapped_bind_group, swapped_bind_group]
         };
 
         SwappableBindGroup {
             buffers,
             layout,
+            layout_descriptor,
             bind_groups,
             current_index: 0,
             double_buffers: self.double_buffers,
@@ -251,7 +255,7 @@ impl BindGroupBuilder {
         &self,
         render_device: &RenderDevice,
         layout: &BindGroupLayout,
-        label: Option<&str>,
+        label: &str,
         swapped: bool,
     ) -> BindGroup {
         let mut entries = Vec::new();
@@ -297,6 +301,7 @@ impl BindGroupBuilder {
 #[derive(Component)]
 pub struct SwappableBindGroup {
     layout: BindGroupLayout,
+    layout_descriptor: BindGroupLayoutDescriptor,
     bind_groups: Vec<BindGroup>,
     pub current_index: usize,
     buffers: Vec<Buffer>,
@@ -313,6 +318,11 @@ impl SwappableBindGroup {
     #[must_use]
     pub fn layout(&self) -> &BindGroupLayout {
         &self.layout
+    }
+
+    #[must_use]
+    pub fn layout_descriptor(&self) -> &BindGroupLayoutDescriptor {
+        &self.layout_descriptor
     }
 
     /// Gets the version of the bind group corresponding to the current
@@ -384,7 +394,10 @@ impl SwappableBindGroup {
 
                 let slice = staging_buffer.slice(..);
                 slice.map_async(MapMode::Read, |_| {});
-                let _ = render_device.poll(PollType::Wait);
+                let _ = render_device.poll(PollType::Wait {
+                    timeout: None,
+                    submission_index: None,
+                });
 
                 let data = slice.get_mapped_range();
                 let result = data.to_vec();

@@ -87,10 +87,8 @@ fn setup_vertex_divergence(world: &mut World) {
         false,
     );
 
-    let vertex_divergence_reduction_bind_group = builder.build(
-        render_device,
-        Some("vertex_divergence_reduction_bind_group"),
-    );
+    let vertex_divergence_reduction_bind_group =
+        builder.build(render_device, "vertex_divergence_reduction_bind_group");
     world.spawn((
         vertex_divergence_reduction_bind_group,
         VertexDivergenceReductionBindGroup,

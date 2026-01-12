@@ -1,13 +1,15 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{f64::consts::TAU, marker::PhantomData, sync::Arc};
 
 use bevy::{
     asset::RenderAssetUsages,
+    math::DVec3,
     mesh::{Indices, PrimitiveTopology},
     platform::collections::HashMap,
     prelude::*,
     render::extract_resource::ExtractResource,
 };
 use hexasphere::shapes::IcoSphere;
+use sprs::{CsMat, CsVec, TriMat};
 
 use crate::constants::SPHERE_RADIUS;
 
@@ -473,6 +475,7 @@ struct MeshGridInner {
     pub vertex_cell_adjacency: Adjacency<VertexCell>,
     pub vertex_edge_adjacency: Adjacency<VertexEdge>,
     pub vertex_angle_offsets: Vec<f32>,
+    pub edge_transport_connection: Vec<f32>,
 }
 
 impl ExtractResource for MeshGrid {
@@ -601,6 +604,9 @@ impl MeshGridInner {
             });
         }
 
+        // let edge_transport_connection = Self::calculate_trivial_connection(grid, &[]);
+        let edge_transport_connection = vec![];
+
         Self {
             cell_adjacency,
             cell_edge_adjacency,
@@ -611,6 +617,7 @@ impl MeshGridInner {
             vertex_cell_adjacency,
             vertex_edge_adjacency,
             vertex_angle_offsets,
+            edge_transport_connection,
         }
     }
 
@@ -634,5 +641,193 @@ impl MeshGridInner {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.insert_indices(Indices::U32(indices));
         mesh
+    }
+
+    fn calculate_trivial_connection(grid: &MeshGrid, singularities: &[(usize, usize)]) -> Vec<f32> {
+        let d0 = Self::build_d0(
+            grid.edge_vertex_adjacency(),
+            grid.vertex_edge_adjacency().len(),
+        );
+        let d1 = Self::build_d1(
+            grid.cell_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+            grid.sphere(),
+        );
+        let curvature = Self::calculate_gaussian_curvature(
+            grid.sphere(),
+            grid.vertex_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+        );
+
+        let num_vertices = curvature.len();
+        let num_edges = grid.edge_vertex_adjacency().len();
+
+        let mut rhs_data = vec![0.0; num_vertices];
+        for i in 0..num_vertices {
+            rhs_data[i] = -curvature[i];
+        }
+
+        for &(vertex_idx, index) in singularities {
+            rhs_data[vertex_idx] += TAU * (index as f64);
+        }
+
+        let rhs = CsVec::new(num_vertices, (0..num_vertices).collect(), rhs_data);
+        todo!();
+        vec![]
+    }
+
+    fn calculate_gaussian_curvature(
+        sphere: &IcoSphere<Vec3A>,
+        vertex_edge_adjacency: &Adjacency<VertexEdge>,
+        edge_vertex_adjacency: &Adjacency<EdgeVertex>,
+    ) -> Vec<f64> {
+        let mut curvature = vec![0.0; vertex_edge_adjacency.len()];
+        for i in 0..vertex_edge_adjacency.len() {
+            let mut angle_sum = 0.0;
+            let mut prev_edge_dir = DVec3::default();
+            let mut adjacent_edges = vertex_edge_adjacency.get(i).collect::<Vec<_>>();
+            adjacent_edges.push(adjacent_edges[0]);
+            for (e_i, &edge) in adjacent_edges.iter().enumerate() {
+                let other_vertex = {
+                    let mut next_edge_iter = edge_vertex_adjacency.get(edge);
+                    if let Some(j) = next_edge_iter.next()
+                        && j != i
+                    {
+                        j
+                    } else {
+                        next_edge_iter.next().expect("to have vertex for edge")
+                    }
+                };
+
+                let dir = sphere.raw_points()[other_vertex] - sphere.raw_points()[i];
+                let dir_64 = DVec3::from(Vec3::from(dir));
+
+                if e_i != 0 {
+                    angle_sum += prev_edge_dir.angle_between(dir_64);
+                }
+
+                prev_edge_dir = dir_64;
+            }
+
+            curvature[i] = TAU - angle_sum;
+        }
+
+        curvature
+    }
+
+    fn build_d0(edge_vertex_adjacency: &Adjacency<EdgeVertex>, num_vertices: usize) -> CsMat<f64> {
+        let num_edges = edge_vertex_adjacency.len();
+        let mut d0_triplet = TriMat::new((num_edges, num_vertices));
+
+        for edge_idx in 0..num_edges {
+            let verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
+            let v_lower = verts[0];
+            let v_higher = verts[1];
+
+            d0_triplet.add_triplet(edge_idx, v_lower, -1.0);
+            d0_triplet.add_triplet(edge_idx, v_higher, 1.0);
+        }
+
+        d0_triplet.to_csr()
+    }
+
+    fn build_d1(
+        cell_edge_adjacency: &Adjacency<CellEdge>,
+        edge_vertex_adjacency: &Adjacency<EdgeVertex>,
+        sphere: &IcoSphere<Vec3A>,
+    ) -> CsMat<f64> {
+        let num_cells = cell_edge_adjacency.len();
+        let num_edges = edge_vertex_adjacency.len();
+        let indices = sphere.get_all_indices();
+
+        let mut d1_triplet = TriMat::new((num_cells, num_edges));
+
+        for cell_idx in 0..num_cells {
+            let base = cell_idx * 3;
+            let cell_verts = [indices[base], indices[base + 1], indices[base + 2]];
+
+            for local_edge in 0..3 {
+                let v_start = cell_verts[local_edge];
+
+                let edge_idx = cell_edge_adjacency
+                    .get(cell_idx)
+                    .nth(local_edge)
+                    .expect("to have cell edge");
+
+                let canonical_v_lower = edge_vertex_adjacency
+                    .get(edge_idx)
+                    .next()
+                    .expect("to have edge vertex");
+                let sign = if canonical_v_lower as u32 == v_start {
+                    -1.0
+                } else {
+                    1.0
+                };
+
+                d1_triplet.add_triplet(cell_idx, edge_idx, sign);
+            }
+        }
+
+        d1_triplet.to_csr()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn it_calculates_curvature() {
+        let grid = MeshGrid::new(100);
+        let curvature = MeshGridInner::calculate_gaussian_curvature(
+            grid.sphere(),
+            grid.vertex_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+        );
+
+        let total_curvature = curvature.iter().fold(0.0, |acc, &x| acc + x);
+
+        assert!(
+            (total_curvature - 2.0 * TAU64).abs() < 1.5e-3,
+            "{}",
+            (total_curvature - 2.0 * TAU64).abs()
+        );
+    }
+
+    #[test]
+    fn it_is_zero_when_applying_d_twice() {
+        let grid = MeshGrid::new(0);
+
+        let d0 = MeshGridInner::build_d0(
+            grid.edge_vertex_adjacency(),
+            grid.vertex_edge_adjacency().len(),
+        );
+        let d1 = MeshGridInner::build_d1(
+            grid.cell_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+            grid.sphere(),
+        );
+
+        let product = &d1 * &d0;
+        let max_val = product
+            .iter()
+            .fold(0.0, |acc: f64, (&x, _)| acc.max(x.abs()));
+
+        assert!(max_val < f64::EPSILON);
+    }
+
+    #[test]
+    fn it_sums_to_zero_for_d0() {
+        let grid = MeshGrid::new(0);
+
+        let d0 = MeshGridInner::build_d0(
+            grid.edge_vertex_adjacency(),
+            grid.vertex_edge_adjacency().len(),
+        );
+
+        for row_vec in d0.outer_iterator() {
+            let sum = row_vec.iter().fold(0.0, |acc, (_, &x)| acc + x);
+            assert!(sum < f64::EPSILON);
+        }
     }
 }

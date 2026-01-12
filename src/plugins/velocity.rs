@@ -1,4 +1,4 @@
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::PI;
 
 use bevy::{
     app::{App, Plugin},
@@ -95,7 +95,7 @@ pub fn setup_velocity(
 
     let mut builder = SwappableBindGroup::builder();
     builder.add_compute_double(velocity_buffer);
-    let swappable = builder.build(&render_device, Some("velocity_bind_group"));
+    let swappable = builder.build(&render_device, "velocity_bind_group");
 
     commands.spawn((swappable, VelocityBindGroup));
 }

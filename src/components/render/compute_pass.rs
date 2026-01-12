@@ -197,7 +197,7 @@ impl ComputePassBuilder {
                 adder(&render_device, &mut builder, Some(&buffer_label));
             }
 
-            let swappable = builder.build(&render_device, Some(label));
+            let swappable = builder.build(&render_device, label);
             let entity = world.spawn(swappable).id();
 
             if let Some(marker_inserter) = self.owned_marker {
@@ -282,7 +282,7 @@ impl Node for ComputePass {
                 let bind_group = world
                     .get::<SwappableBindGroup>(entity)
                     .expect("owned bind group entity missing SwappableBindGroup");
-                layouts.push((0, bind_group.layout().clone()));
+                layouts.push((0, bind_group.layout_descriptor().clone()));
             }
 
             for (slot, finder) in &self.external_bind_groups {
@@ -299,7 +299,7 @@ impl Node for ComputePass {
                 let bind_group = world
                     .get::<SwappableBindGroup>(entity)
                     .expect("external bind group entity missing SwappableBindGroup");
-                layouts.push((*slot, bind_group.layout().clone()));
+                layouts.push((*slot, bind_group.layout_descriptor().clone()));
             }
 
             layouts.sort_by_key(|(slot, _)| *slot);

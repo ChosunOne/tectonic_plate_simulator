@@ -104,7 +104,10 @@ impl<T: NoUninit + AnyBitPattern + Send + Sync> DoubleBuffer<T> {
 
         let slice = self.staging.slice(..);
         slice.map_async(MapMode::Read, |_| {});
-        let _ = render_device.poll(PollType::Wait);
+        let _ = render_device.poll(PollType::Wait {
+            timeout: None,
+            submission_index: None,
+        });
 
         let data = slice.get_mapped_range();
         let result = data.to_vec();
