@@ -31,75 +31,73 @@ struct VertexVelocityOutput {
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3<f32> {
-        let c = v * s;
-        let hp = h * 6.0;
-        let x = c * (1.0 - abs(hp % 2.0 - 1.0));
-        let m = v - c;
+    let c = v * s;
+    let hp = h * 6.0;
+    let x = c * (1.0 - abs(hp % 2.0 - 1.0));
+    let m = v - c;
 
-        var rgb: vec3<f32>;
-        if hp < 1.0 {
-                rgb = vec3<f32>(c, x, 0.0);
-        } else if hp < 2.0 {
-                rgb = vec3<f32>(x, c, 0.0);
-        } else if hp < 3.0 {
-                rgb = vec3<f32>(0.0, c, x);
-        } else if hp < 4.0 {
-                rgb = vec3<f32>(0.0, x, c);
-        } else if hp < 5.0 {
-                rgb = vec3<f32>(x, 0.0, c);
-        } else {
-                rgb = vec3<f32>(c, 0.0, x);
-        }
+    var rgb: vec3<f32>;
+    if hp < 1.0 {
+        rgb = vec3<f32>(c, x, 0.0);
+    } else if hp < 2.0 {
+        rgb = vec3<f32>(x, c, 0.0);
+    } else if hp < 3.0 {
+        rgb = vec3<f32>(0.0, c, x);
+    } else if hp < 4.0 {
+        rgb = vec3<f32>(0.0, x, c);
+    } else if hp < 5.0 {
+        rgb = vec3<f32>(x, 0.0, c);
+    } else {
+        rgb = vec3<f32>(c, 0.0, x);
+    }
 
-        return rgb + vec3<f32>(m, m, m);
+    return rgb + vec3<f32>(m, m, m);
 }
 
 @vertex
 fn vertex(vertex: Vertex) -> VertexVelocityOutput {
-        var out: VertexVelocityOutput;
+    var out: VertexVelocityOutput;
 
-        let world_from_local = mesh_functions::get_world_from_local(vertex.instance_index);
+    let world_from_local = mesh_functions::get_world_from_local(vertex.instance_index);
 
-        out.world_position = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(vertex.position, 1.0));
-        out.position = position_world_to_clip(out.world_position.xyz);
-        out.world_normal = mesh_functions::mesh_normal_local_to_world(vertex.normal, vertex.instance_index);
+    out.world_position = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(vertex.position, 1.0));
+    out.position = position_world_to_clip(out.world_position.xyz);
+    out.world_normal = mesh_functions::mesh_normal_local_to_world(vertex.normal, vertex.instance_index);
 
-        let vel = vertex_velocity[vertex.vertex_index];
-        let magnitude = vel.x;
-        let angle = vel.y;
+    let vel = vertex_velocity[vertex.vertex_index];
+    let magnitude = vel.x;
+    let angle = vel.y;
 
-        let min_mag = vertex_velocity_bounds[0];
-        let max_mag = vertex_velocity_bounds[1];
-        let range = max_mag - min_mag;
+    let min_mag = vertex_velocity_bounds[0];
+    let max_mag = vertex_velocity_bounds[1];
+    let range = max_mag - min_mag;
 
-        if range > 0.001 {
-                out.normalized_magnitude = (magnitude - min_mag) / range;
-        }
-        else if range > 0.0 {
-                out.normalized_magnitude = 0.0;
-        }
-        else {
-                out.normalized_magnitude = -1.0;
-        }
+    if range > 0.001 {
+        out.normalized_magnitude = (magnitude - min_mag) / range;
+    } else if range > 0.0 {
+        out.normalized_magnitude = 0.0;
+    } else {
+        out.normalized_magnitude = -1.0;
+    }
 
-        let angle_offset = vertex_angle_offsets[vertex.vertex_index];
-        let global_angle = angle + angle_offset;
-        out.velocity_x = cos(global_angle);
-        out.velocity_y = sin(global_angle);
+    let angle_offset = vertex_angle_offsets[vertex.vertex_index];
+    let global_angle = angle + angle_offset;
+    out.velocity_x = cos(global_angle);
+    out.velocity_y = sin(global_angle);
 
-        return out;
+    return out;
 }
 
 @fragment
 fn fragment(in: VertexVelocityOutput) -> @location(0) vec4<f32> {
-        if in.normalized_magnitude < 0.0 {
-                return vec4<f32>(1.0, 0.0, 1.0, 1.0);
-        }
-        let angle = atan2(in.velocity_y, in.velocity_x);
-        var hue = (angle + PI) / TAU;
-        hue = hue - floor(hue);
-        let saturation = 1.0;
-        let value = in.normalized_magnitude;
-        let color = hsv_to_rgb(hue, saturation, value);
-        return vec4<f32>(color, 1.0);
+    if in.normalized_magnitude < 0.0 {
+        return vec4<f32>(1.0, 0.0, 1.0, 1.0);
+    }
+    let angle = atan2(in.velocity_y, in.velocity_x);
+    var hue = (angle + PI) / TAU;
+    hue = hue - floor(hue);
+    let saturation = 1.0;
+    let value = in.normalized_magnitude;
+    let color = hsv_to_rgb(hue, saturation, value);
+    return vec4<f32>(color, 1.0);
 }

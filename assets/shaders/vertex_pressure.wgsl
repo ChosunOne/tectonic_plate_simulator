@@ -7,20 +7,20 @@
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-        let vertex_idx = global_id.x;
-        let num_vertices = arrayLength(&vertex_pressures);
-        if (vertex_idx >= num_vertices) {
-                return;
-        }
+    let vertex_idx = global_id.x;
+    let num_vertices = arrayLength(&vertex_pressures);
+    if vertex_idx >= num_vertices {
+        return;
+    }
 
-        let start = vertex_cell_offsets[vertex_idx];
-        let end = vertex_cell_offsets[vertex_idx + 1u];
+    let start = vertex_cell_offsets[vertex_idx];
+    let end = vertex_cell_offsets[vertex_idx + 1u];
 
-        var sum = 0.0;
-        for (var i = start; i < end; i++) {
-                let cell_idx = vertex_cell_indices[i];
-                sum += pressure_out[cell_idx];
-        }
+    var sum = 0.0;
+    for (var i = start; i < end; i++) {
+        let cell_idx = vertex_cell_indices[i];
+        sum   += pressure_out[cell_idx];
+    }
 
-        vertex_pressures[vertex_idx] = sum / f32(end - start);
+    vertex_pressures[vertex_idx] = sum / f32(end - start);
 }

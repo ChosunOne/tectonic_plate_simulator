@@ -3,12 +3,12 @@
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-        let cell_idx = global_id.x;
-        let num_cells = arrayLength(&phi_in);
+    let cell_idx = global_id.x;
+    let num_cells = arrayLength(&phi_in);
 
-        if (cell_idx >= num_cells) {
-                return;
-        }
+    if cell_idx >= num_cells {
+        return;
+    }
 
-        phi_out[cell_idx] = 0.0;
+    phi_out[cell_idx] = 0.0;
 }
