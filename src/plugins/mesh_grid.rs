@@ -19,7 +19,7 @@ pub struct MeshGridPlugin;
 
 impl Plugin for MeshGridPlugin {
     fn build(&self, app: &mut App) {
-        let grid = MeshGrid::new(100);
+        let grid = MeshGrid::new(20);
         app.insert_resource(grid.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(grid);

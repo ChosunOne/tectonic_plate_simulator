@@ -53,39 +53,12 @@ pub fn setup_velocity(
         let latitude = (frame.origin.y / frame.origin.length()).asin();
 
         let angle = frame.bearing_to_local_angle(PI / 2.0);
+        // let angle = if latitude.abs() > 0.35 {
+        //     frame.bearing_to_local_angle(PI / 2.0)
         // } else {
-        //     frame.bearing_to_local_angle(3.0 * PI / 2.0)
+        //     frame.bearing_to_local_angle(-PI / 2.0)
         // };
         let magnitude = 100.0 * latitude.cos();
-
-        // let magnitude;
-        // let angle;
-        // match i {
-        //     2785 => {
-        //         magnitude = 17.09977341;
-        //         angle = 6.28318501;
-        //     }
-        //     2784 => {
-        //         magnitude = 16.71239471;
-        //         angle = 0.92208433;
-        //     }
-        //     2786 => {
-        //         magnitude = 16.72800827;
-        //         angle = 5.33526325;
-        //     }
-        //     1940 => {
-        //         magnitude = 15.19938850;
-        //         angle = 5.30937481;
-        //     }
-        //     2793 => {
-        //         magnitude = 13.33704472;
-        //         angle = 1.00216007;
-        //     }
-        //     _ => {
-        //         magnitude = 0.0;
-        //         angle = 0.0;
-        //     }
-        // }
 
         velocity_data.push([magnitude, angle]);
     }

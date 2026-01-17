@@ -174,17 +174,17 @@ fn setup_render_resources(
 
     let mut builder = BindGroupBuilder::new();
     builder.add_compute_double(first_buffer);
-    let first_swappable = builder.build(&render_device, Some("first_bind_group"));
+    let first_swappable = builder.build(&render_device, "first_bind_group");
 
     let mut builder = BindGroupBuilder::new();
     builder.add_compute_double(second_buffer);
-    let second_swappable = builder.build(&render_device, Some("second_bind_group"));
+    let second_swappable = builder.build(&render_device, "second_bind_group");
 
     let shader = asset_server.load("shaders/tests/double_buffer.wgsl");
 
     let pipeline_id = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
         label: Some("increment_pipeline".into()),
-        layout: vec![first_swappable.layout().clone()],
+        layout: vec![first_swappable.layout_descriptor().clone()],
         shader,
         shader_defs: vec![],
         entry_point: Some("main".into()),

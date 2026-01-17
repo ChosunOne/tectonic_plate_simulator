@@ -4469,6 +4469,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sprs-ldl"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc152d7b3747cde0983b91da392c8a5448e8f82260726bf56064f6d475c69e82"
+dependencies = [
+ "num-traits",
+ "sprs",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4566,6 +4576,7 @@ dependencies = [
  "leafwing-input-manager",
  "log",
  "sprs",
+ "sprs-ldl",
 ]
 
 [[package]]

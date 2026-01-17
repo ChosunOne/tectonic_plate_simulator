@@ -139,11 +139,11 @@ fn setup_render_resources(
     commands.insert_resource(TestDoubleBuffer(double_buffer.clone()));
     let mut builder = BindGroupBuilder::new();
     builder.add_compute_double(double_buffer);
-    let swappable = builder.build(&render_device, Some("test_bind_group"));
+    let swappable = builder.build(&render_device, "test_bind_group");
     let shader = asset_server.load("shaders/tests/double_buffer.wgsl");
     let pipeline_id = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
         label: Some("increment_pipeline".into()),
-        layout: vec![swappable.layout().clone()],
+        layout: vec![swappable.layout_descriptor().clone()],
         shader,
         shader_defs: vec![],
         entry_point: Some("main".into()),

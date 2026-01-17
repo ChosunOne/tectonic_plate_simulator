@@ -9,7 +9,8 @@ use bevy::{
     render::extract_resource::ExtractResource,
 };
 use hexasphere::shapes::IcoSphere;
-use sprs::{CsMat, CsVec, TriMat};
+use sprs::{CsMat, CsMatView, TriMat};
+use sprs_ldl::LdlNumeric;
 
 use crate::constants::SPHERE_RADIUS;
 
@@ -604,7 +605,14 @@ impl MeshGridInner {
             });
         }
 
-        // let edge_transport_connection = Self::calculate_trivial_connection(grid, &[]);
+        // let edge_transport_connection = Self::calculate_trivial_connection(
+        //     cell_edge_adjacency.len(),
+        //     &[(0, 2)],
+        //     &vertex_edge_adjacency,
+        //     &edge_cell_adjacency,
+        //     &edge_vertex_adjacency,
+        //     &sphere,
+        // );
         let edge_transport_connection = vec![];
 
         Self {
@@ -643,37 +651,67 @@ impl MeshGridInner {
         mesh
     }
 
-    fn calculate_trivial_connection(grid: &MeshGrid, singularities: &[(usize, usize)]) -> Vec<f32> {
-        let d0 = Self::build_d0(
-            grid.edge_vertex_adjacency(),
-            grid.vertex_edge_adjacency().len(),
+    fn calculate_trivial_connection(
+        num_faces: usize,
+        singularities: &[(usize, usize)],
+        vertex_edge_adjacency: &Adjacency<VertexEdge>,
+        edge_cell_adjacency: &Adjacency<EdgeCell>,
+        edge_vertex_adjacency: &Adjacency<EdgeVertex>,
+        sphere: &IcoSphere<Vec3A>,
+    ) -> Vec<f32> {
+        let num_vertices = vertex_edge_adjacency.len();
+        let num_edges = edge_cell_adjacency.len();
+        let euler_characteristic = num_vertices + num_faces - num_edges;
+        debug_assert_eq!(
+            euler_characteristic,
+            singularities.iter().fold(0, |acc, x| { acc + x.1 })
         );
-        let d1 = Self::build_d1(
-            grid.cell_edge_adjacency(),
-            grid.edge_vertex_adjacency(),
-            grid.sphere(),
+        let d0 = Self::build_d0(vertex_edge_adjacency, edge_cell_adjacency, num_edges);
+        let mut curvature = Self::calculate_gaussian_curvature(
+            sphere,
+            vertex_edge_adjacency,
+            edge_vertex_adjacency,
         );
-        let curvature = Self::calculate_gaussian_curvature(
-            grid.sphere(),
-            grid.vertex_edge_adjacency(),
-            grid.edge_vertex_adjacency(),
-        );
-
-        let num_vertices = curvature.len();
-        let num_edges = grid.edge_vertex_adjacency().len();
-
-        let mut rhs_data = vec![0.0; num_vertices];
-        for i in 0..num_vertices {
-            rhs_data[i] = -curvature[i];
-        }
 
         for &(vertex_idx, index) in singularities {
-            rhs_data[vertex_idx] += TAU * (index as f64);
+            curvature[vertex_idx] -= TAU * (index as f64);
         }
 
-        let rhs = CsVec::new(num_vertices, (0..num_vertices).collect(), rhs_data);
-        todo!();
-        vec![]
+        let a = d0.transpose_view();
+        let connection = Self::solve_min_norm(a, &curvature);
+
+        connection.into_iter().map(|x| x as f32).collect()
+    }
+
+    fn solve_min_norm(a: CsMatView<f64>, b: &[f64]) -> Vec<f64> {
+        let n_vars = a.cols();
+        let n_constraints = a.rows();
+        let n_total = n_vars + n_constraints;
+
+        let mut aug = TriMat::new((n_total, n_total));
+
+        for i in 0..n_vars {
+            aug.add_triplet(i, i, 1.0);
+        }
+
+        let a_t = a.transpose_view();
+        for (&val, (i, j)) in a_t.iter() {
+            aug.add_triplet(i, n_vars + j, val);
+        }
+
+        for (&val, (i, j)) in a.iter() {
+            aug.add_triplet(n_vars + i, j, val);
+        }
+
+        let aug_csr = aug.to_csr();
+        let mut rhs = vec![0.0; n_total];
+        for (i, &val) in b.iter().enumerate() {
+            rhs[n_vars + i] = -val;
+        }
+
+        let ldlt = LdlNumeric::new(aug_csr.view()).unwrap();
+        let solution = ldlt.solve(&rhs);
+        solution[..n_vars].to_vec()
     }
 
     fn calculate_gaussian_curvature(
@@ -711,64 +749,39 @@ impl MeshGridInner {
 
             curvature[i] = TAU - angle_sum;
         }
-
         curvature
     }
 
-    fn build_d0(edge_vertex_adjacency: &Adjacency<EdgeVertex>, num_vertices: usize) -> CsMat<f64> {
-        let num_edges = edge_vertex_adjacency.len();
+    fn build_d0(
+        vertex_edge_adjacency: &Adjacency<VertexEdge>,
+        edge_cell_adjacency: &Adjacency<EdgeCell>,
+        num_edges: usize,
+    ) -> CsMat<f64> {
+        let num_vertices = vertex_edge_adjacency.len();
         let mut d0_triplet = TriMat::new((num_edges, num_vertices));
 
-        for edge_idx in 0..num_edges {
-            let verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
-            let v_lower = verts[0];
-            let v_higher = verts[1];
-
-            d0_triplet.add_triplet(edge_idx, v_lower, -1.0);
-            d0_triplet.add_triplet(edge_idx, v_higher, 1.0);
-        }
-
-        d0_triplet.to_csr()
-    }
-
-    fn build_d1(
-        cell_edge_adjacency: &Adjacency<CellEdge>,
-        edge_vertex_adjacency: &Adjacency<EdgeVertex>,
-        sphere: &IcoSphere<Vec3A>,
-    ) -> CsMat<f64> {
-        let num_cells = cell_edge_adjacency.len();
-        let num_edges = edge_vertex_adjacency.len();
-        let indices = sphere.get_all_indices();
-
-        let mut d1_triplet = TriMat::new((num_cells, num_edges));
-
-        for cell_idx in 0..num_cells {
-            let base = cell_idx * 3;
-            let cell_verts = [indices[base], indices[base + 1], indices[base + 2]];
-
-            for local_edge in 0..3 {
-                let v_start = cell_verts[local_edge];
-
-                let edge_idx = cell_edge_adjacency
-                    .get(cell_idx)
-                    .nth(local_edge)
-                    .expect("to have cell edge");
-
-                let canonical_v_lower = edge_vertex_adjacency
-                    .get(edge_idx)
-                    .next()
-                    .expect("to have edge vertex");
-                let sign = if canonical_v_lower as u32 == v_start {
+        for vertex_idx in 0..num_vertices {
+            let adjacent_edges = vertex_edge_adjacency.get(vertex_idx).collect::<Vec<_>>();
+            for i in 0..(adjacent_edges.len()) {
+                let edge_idx = adjacent_edges[i];
+                let last_edge_idx = adjacent_edges
+                    [((i as isize - 1).rem_euclid(adjacent_edges.len() as isize)) as usize];
+                let last_cells = edge_cell_adjacency.get(last_edge_idx).collect::<Vec<_>>();
+                let cells = edge_cell_adjacency.get(edge_idx).collect::<Vec<_>>();
+                // find the overlapping cell and establish the direction in which we are traversing the cells
+                let overlapping_cell_idx = *cells.iter().find(|c| last_cells.contains(c)).unwrap();
+                // From secondary -> primary +1
+                // From primary -> secondary -1
+                let sign = if overlapping_cell_idx == cells[0] {
                     -1.0
                 } else {
                     1.0
                 };
-
-                d1_triplet.add_triplet(cell_idx, edge_idx, sign);
+                d0_triplet.add_triplet(edge_idx, vertex_idx, sign);
             }
         }
 
-        d1_triplet.to_csr()
+        d0_triplet.to_csr()
     }
 }
 
@@ -778,7 +791,7 @@ mod test {
 
     #[test]
     fn it_calculates_curvature() {
-        let grid = MeshGrid::new(100);
+        let grid = MeshGrid::new(20);
         let curvature = MeshGridInner::calculate_gaussian_curvature(
             grid.sphere(),
             grid.vertex_edge_adjacency(),
@@ -788,46 +801,80 @@ mod test {
         let total_curvature = curvature.iter().fold(0.0, |acc, &x| acc + x);
 
         assert!(
-            (total_curvature - 2.0 * TAU64).abs() < 1.5e-3,
+            (total_curvature - 2.0 * TAU).abs() < 1.5e-3,
             "{}",
-            (total_curvature - 2.0 * TAU64).abs()
+            (total_curvature - 2.0 * TAU).abs()
         );
-    }
-
-    #[test]
-    fn it_is_zero_when_applying_d_twice() {
-        let grid = MeshGrid::new(0);
-
-        let d0 = MeshGridInner::build_d0(
-            grid.edge_vertex_adjacency(),
-            grid.vertex_edge_adjacency().len(),
-        );
-        let d1 = MeshGridInner::build_d1(
-            grid.cell_edge_adjacency(),
-            grid.edge_vertex_adjacency(),
-            grid.sphere(),
-        );
-
-        let product = &d1 * &d0;
-        let max_val = product
-            .iter()
-            .fold(0.0, |acc: f64, (&x, _)| acc.max(x.abs()));
-
-        assert!(max_val < f64::EPSILON);
     }
 
     #[test]
     fn it_sums_to_zero_for_d0() {
-        let grid = MeshGrid::new(0);
+        let grid = MeshGrid::new(20);
 
         let d0 = MeshGridInner::build_d0(
-            grid.edge_vertex_adjacency(),
-            grid.vertex_edge_adjacency().len(),
+            grid.vertex_edge_adjacency(),
+            grid.edge_cell_adjacency(),
+            grid.edge_cell_adjacency().len(),
         );
 
         for row_vec in d0.outer_iterator() {
             let sum = row_vec.iter().fold(0.0, |acc, (_, &x)| acc + x);
             assert!(sum < f64::EPSILON);
+        }
+    }
+
+    #[test]
+    fn it_calculates_a_trivial_connection() {
+        let grid = MeshGrid::new(20);
+        let singularities = &[(0, 2)];
+        let connection = MeshGridInner::calculate_trivial_connection(
+            grid.cell_edge_adjacency().len(),
+            singularities,
+            grid.vertex_edge_adjacency(),
+            grid.edge_cell_adjacency(),
+            grid.edge_vertex_adjacency(),
+            grid.sphere(),
+        );
+
+        let mut curvature = MeshGridInner::calculate_gaussian_curvature(
+            grid.sphere(),
+            grid.vertex_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+        );
+        for &(edge_idx, k) in singularities {
+            curvature[edge_idx] -= TAU * (k as f64);
+        }
+
+        let num_vertices = grid.vertex_edge_adjacency().len();
+
+        for vertex_idx in 0..num_vertices {
+            let edges: Vec<_> = grid.vertex_edge_adjacency().get(vertex_idx).collect();
+
+            let mut signed_sum = 0.0;
+
+            for i in 0..edges.len() {
+                let edge_idx = edges[i];
+                let prev_edge_idx = edges[(i + edges.len() - 1) % edges.len()];
+
+                let cells: Vec<_> = grid.edge_cell_adjacency().get(edge_idx).collect();
+                let prev_cells: Vec<_> = grid.edge_cell_adjacency().get(prev_edge_idx).collect();
+
+                // Find overlapping cell between current and previous edge
+                let overlapping = cells.iter().find(|c| prev_cells.contains(c)).unwrap();
+
+                // Canonical orientation: secondary -> primary = cells[1] -> cells[0]
+                // Sign is +1 if we traverse from secondary (cells[1]), -1 if from primary (cells[0])
+                let sign = if overlapping == &cells[1] { 1.0 } else { -1.0 };
+
+                signed_sum += sign * (connection[edge_idx] as f64);
+            }
+
+            // The constraint: sum(sign * x) = -˜K
+            let expected = -curvature[vertex_idx];
+            assert!(
+                (signed_sum - expected).abs() < 1e-6,
+                "Vertex {vertex_idx}: signed_sum = {signed_sum}, expected = {expected}",
+            );
         }
     }
 }

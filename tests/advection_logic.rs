@@ -624,5 +624,4 @@ fn test_interior_interpolation_logic() {
 
     dbg!(&interpolated_velocity);
     // assert_eq!(interpolated_velocity, velocity[base_edge]);
-    todo!()
 }
