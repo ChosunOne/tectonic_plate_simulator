@@ -1,0 +1,8 @@
+[package]
+name = "sparse"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sprs = "^0.11.4"
+suitesparse_sys = {version = "^0.1.4", features = ["klu", "amd", "colamd", "btf", "spqr", "cholmod"]}

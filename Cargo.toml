@@ -3,6 +3,8 @@ name = "tectonic_plate_simulator"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+
 [dependencies]
 bevy = {version = "^0.18", features = ["dynamic_linking", "exr", "wayland"]}
 log = {version = "*", features = ["max_level_debug", "release_max_level_warn"]}
@@ -11,7 +13,10 @@ hexasphere = {version = "^16.0.0", features = ["adjacency"]}
 bytemuck = "^1.24.0"
 leafwing-input-manager = "^0.20.0"
 sprs = "^0.11.4"
-sprs-ldl = "0.10"
+
+[dependencies.sparse]
+path = "sparse"
+
 
 [profile.dev]
 opt-level = 1

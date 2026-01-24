@@ -8,9 +8,10 @@ use bevy::{
     prelude::*,
     render::extract_resource::ExtractResource,
 };
+
 use hexasphere::shapes::IcoSphere;
+use sparse::solver::MinNormSolver;
 use sprs::{CsMat, CsMatView, TriMat};
-use sprs_ldl::LdlNumeric;
 
 use crate::constants::SPHERE_RADIUS;
 
@@ -666,7 +667,7 @@ impl MeshGridInner {
             euler_characteristic,
             singularities.iter().fold(0, |acc, x| { acc + x.1 })
         );
-        let d0 = Self::build_d0(vertex_edge_adjacency, edge_cell_adjacency, num_edges);
+        let d0 = Self::build_d0(vertex_edge_adjacency, edge_cell_adjacency);
         let mut curvature = Self::calculate_gaussian_curvature(
             sphere,
             vertex_edge_adjacency,
@@ -677,41 +678,29 @@ impl MeshGridInner {
             curvature[vertex_idx] -= TAU * (index as f64);
         }
 
-        let a = d0.transpose_view();
-        let connection = Self::solve_min_norm(a, &curvature);
+        let mut neg_curvature = vec![0.0; curvature.len()];
+        for i in 0..neg_curvature.len() {
+            neg_curvature[i] = -curvature[i];
+        }
 
-        connection.into_iter().map(|x| x as f32).collect()
+        let a = d0.transpose_view();
+        let connection = Self::solve_min_norm(a, &neg_curvature);
+
+        connection
+            .into_iter()
+            .map(|x| {
+                if x.abs() < f64::from(f32::EPSILON) {
+                    0.0
+                } else {
+                    x as f32
+                }
+            })
+            .collect()
     }
 
     fn solve_min_norm(a: CsMatView<f64>, b: &[f64]) -> Vec<f64> {
-        let n_vars = a.cols();
-        let n_constraints = a.rows();
-        let n_total = n_vars + n_constraints;
-
-        let mut aug = TriMat::new((n_total, n_total));
-
-        for i in 0..n_vars {
-            aug.add_triplet(i, i, 1.0);
-        }
-
-        let a_t = a.transpose_view();
-        for (&val, (i, j)) in a_t.iter() {
-            aug.add_triplet(i, n_vars + j, val);
-        }
-
-        for (&val, (i, j)) in a.iter() {
-            aug.add_triplet(n_vars + i, j, val);
-        }
-
-        let aug_csr = aug.to_csr();
-        let mut rhs = vec![0.0; n_total];
-        for (i, &val) in b.iter().enumerate() {
-            rhs[n_vars + i] = -val;
-        }
-
-        let ldlt = LdlNumeric::new(aug_csr.view()).unwrap();
-        let solution = ldlt.solve(&rhs);
-        solution[..n_vars].to_vec()
+        let mut solver = MinNormSolver::new().expect("to create solver");
+        solver.solve_min_norm(a, b).expect("to solve min norm")
     }
 
     fn calculate_gaussian_curvature(
@@ -755,10 +744,9 @@ impl MeshGridInner {
     fn build_d0(
         vertex_edge_adjacency: &Adjacency<VertexEdge>,
         edge_cell_adjacency: &Adjacency<EdgeCell>,
-        num_edges: usize,
     ) -> CsMat<f64> {
         let num_vertices = vertex_edge_adjacency.len();
-        let mut d0_triplet = TriMat::new((num_edges, num_vertices));
+        let mut d0_triplets = TriMat::new((edge_cell_adjacency.len(), num_vertices));
 
         for vertex_idx in 0..num_vertices {
             let adjacent_edges = vertex_edge_adjacency.get(vertex_idx).collect::<Vec<_>>();
@@ -777,16 +765,19 @@ impl MeshGridInner {
                 } else {
                     1.0
                 };
-                d0_triplet.add_triplet(edge_idx, vertex_idx, sign);
+
+                d0_triplets.add_triplet(edge_idx, vertex_idx, sign);
             }
         }
 
-        d0_triplet.to_csr()
+        d0_triplets.to_csc()
     }
 }
 
 #[cfg(test)]
 mod test {
+    use bevy::mesh::VertexAttributeValues;
+
     use super::*;
 
     #[test]
@@ -811,22 +802,40 @@ mod test {
     fn it_sums_to_zero_for_d0() {
         let grid = MeshGrid::new(20);
 
-        let d0 = MeshGridInner::build_d0(
-            grid.vertex_edge_adjacency(),
-            grid.edge_cell_adjacency(),
-            grid.edge_cell_adjacency().len(),
-        );
+        let d0 = MeshGridInner::build_d0(grid.vertex_edge_adjacency(), grid.edge_cell_adjacency())
+            .to_csr();
 
         for row_vec in d0.outer_iterator() {
             let sum = row_vec.iter().fold(0.0, |acc, (_, &x)| acc + x);
-            assert!(sum < f64::EPSILON);
+            assert!(sum.abs() < f64::EPSILON, "{sum}");
         }
     }
 
     #[test]
     fn it_calculates_a_trivial_connection() {
-        let grid = MeshGrid::new(20);
-        let singularities = &[(0, 2)];
+        let grid = MeshGrid::new(0);
+        let mesh = grid.mesh();
+        let VertexAttributeValues::Float32x3(positions) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        else {
+            panic!("failed to get vertex positions");
+        };
+
+        for pos in positions {
+            println!("v {} {} {}", pos[0], pos[1], pos[2]);
+        }
+
+        let indices = mesh.indices().unwrap();
+        let indices = match indices {
+            Indices::U16(i) => i.iter().map(|&i| i as usize).collect::<Vec<_>>(),
+            Indices::U32(i) => i.iter().map(|&i| i as usize).collect::<Vec<_>>(),
+        };
+
+        for chunk in indices.chunks(3) {
+            println!("f {} {} {}", chunk[0] + 1, chunk[1] + 1, chunk[2] + 1);
+        }
+
+        let singularities = &[(0, 1), (11, 1)];
         let connection = MeshGridInner::calculate_trivial_connection(
             grid.cell_edge_adjacency().len(),
             singularities,
@@ -835,6 +844,8 @@ mod test {
             grid.edge_vertex_adjacency(),
             grid.sphere(),
         );
+
+        dbg!(&connection);
 
         let mut curvature = MeshGridInner::calculate_gaussian_curvature(
             grid.sphere(),

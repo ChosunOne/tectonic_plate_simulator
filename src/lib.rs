@@ -21,8 +21,8 @@ pub struct LocalFrame {
 
 impl LocalFrame {
     /// Create a local frame centered on a vertex.
-    /// - axis_x points toward the first adjacent vertex projected onto the tangent plane.
-    /// - axis_y is perpendicular to axis_x in the tangent plane
+    /// - `axis_x` points toward the first adjacent vertex projected onto the tangent plane.
+    /// - `axis_y` is perpendicular to `axis_x` in the tangent plane
     /// # Panics
     /// If there is no adjacent edge to the indicated vertex.
     #[must_use]
