@@ -606,15 +606,14 @@ impl MeshGridInner {
             });
         }
 
-        // let edge_transport_connection = Self::calculate_trivial_connection(
-        //     cell_edge_adjacency.len(),
-        //     &[(0, 2)],
-        //     &vertex_edge_adjacency,
-        //     &edge_cell_adjacency,
-        //     &edge_vertex_adjacency,
-        //     &sphere,
-        // );
-        let edge_transport_connection = vec![];
+        let edge_transport_connection = Self::calculate_trivial_connection(
+            cell_edge_adjacency.len(),
+            &[(0, 1), (11, 1)],
+            &vertex_edge_adjacency,
+            &edge_cell_adjacency,
+            &edge_vertex_adjacency,
+            &sphere,
+        );
 
         Self {
             cell_adjacency,
