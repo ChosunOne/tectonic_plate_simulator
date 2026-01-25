@@ -776,8 +776,6 @@ impl MeshGridInner {
 
 #[cfg(test)]
 mod test {
-    use bevy::mesh::VertexAttributeValues;
-
     use super::*;
 
     #[test]
@@ -813,28 +811,7 @@ mod test {
 
     #[test]
     fn it_calculates_a_trivial_connection() {
-        let grid = MeshGrid::new(0);
-        let mesh = grid.mesh();
-        let VertexAttributeValues::Float32x3(positions) =
-            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
-        else {
-            panic!("failed to get vertex positions");
-        };
-
-        for pos in positions {
-            println!("v {} {} {}", pos[0], pos[1], pos[2]);
-        }
-
-        let indices = mesh.indices().unwrap();
-        let indices = match indices {
-            Indices::U16(i) => i.iter().map(|&i| i as usize).collect::<Vec<_>>(),
-            Indices::U32(i) => i.iter().map(|&i| i as usize).collect::<Vec<_>>(),
-        };
-
-        for chunk in indices.chunks(3) {
-            println!("f {} {} {}", chunk[0] + 1, chunk[1] + 1, chunk[2] + 1);
-        }
-
+        let grid = MeshGrid::new(100);
         let singularities = &[(0, 1), (11, 1)];
         let connection = MeshGridInner::calculate_trivial_connection(
             grid.cell_edge_adjacency().len(),
@@ -844,8 +821,6 @@ mod test {
             grid.edge_vertex_adjacency(),
             grid.sphere(),
         );
-
-        dbg!(&connection);
 
         let mut curvature = MeshGridInner::calculate_gaussian_curvature(
             grid.sphere(),
