@@ -19,6 +19,7 @@ const EPS: f32 = 1.1920929e-7;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 fn mod_tau(theta: f32) -> f32 {
     if theta >= 0.0 && theta < TAU {
@@ -140,13 +141,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             let right_edge = edges.x;
             let left_edge = prev_edge_idx;
             let angles = compute_angles(base_edge, left_edge, right_edge);
-            angle_increment = mod_tau(angle_increment + angles.x);
+            angle_increment = mod_tau(angle_increment + angles.x - edge_transport_connection[base_edge]);
         }
 
         let rotated_angle = mod_tau(angle + angle_increment);
 
-        sum_x   += mag * cos(rotated_angle);
-        sum_y   += mag * sin(rotated_angle);
+        sum_x = sum_x + mag * cos(rotated_angle);
+        sum_y = sum_y + mag * sin(rotated_angle);
         prev_edge_idx = edge_idx;
     }
 

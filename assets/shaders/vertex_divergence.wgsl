@@ -15,6 +15,7 @@
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 fn cell_area(cell: u32) -> f32 {
     let base_edge = cell_edge_indices[cell * 3u];
@@ -46,8 +47,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     for (var i = start; i < end; i++) {
         let cell_idx = vertex_cell_indices[i];
         let area = cell_area(cell_idx);
-        sum   += divergence[cell_idx] * area;
-        area_sum   += area;
+        sum     += divergence[cell_idx] * area;
+        area_sum     += area;
     }
 
     vertex_divergence[vertex_idx] = sum / area_sum;

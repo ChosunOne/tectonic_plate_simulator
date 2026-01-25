@@ -104,6 +104,11 @@ impl MeshGrid {
     pub fn vertex_angle_offsets(&self) -> &[f32] {
         &self.0.vertex_angle_offsets
     }
+
+    #[must_use]
+    pub fn edge_transport_connection(&self) -> &[f32] {
+        &self.0.edge_transport_connection
+    }
 }
 
 /// CSR Adjacency data
@@ -861,5 +866,132 @@ mod test {
                 "Vertex {vertex_idx}: signed_sum = {signed_sum}, expected = {expected}",
             );
         }
+    }
+
+    fn mod_tau(theta: f32) -> f32 {
+        if (0.0..std::f32::consts::TAU).contains(&theta) {
+            return theta;
+        }
+        (theta + std::f32::consts::TAU) % std::f32::consts::TAU
+    }
+
+    fn compute_angles(base: usize, left: usize, right: usize, edge_lengths: &[f32]) -> [f32; 3] {
+        let a = edge_lengths[base as usize];
+        let b = edge_lengths[left as usize];
+        let c = edge_lengths[right as usize];
+
+        let a_squared = a * a;
+        let b_squared = b * b;
+        let c_squared = c * c;
+
+        let left_base_angle = ((a_squared + b_squared - c_squared) / (2.0 * a * b))
+            .clamp(-1.0, 1.0)
+            .acos();
+        let right_base_angle = ((a_squared + c_squared - b_squared) / (2.0 * a * c))
+            .clamp(-1.0, 1.0)
+            .acos();
+        let apex_angle = ((b_squared + c_squared - a_squared) / (2.0 * b * c))
+            .clamp(-1.0, 1.0)
+            .acos();
+
+        [left_base_angle, right_base_angle, apex_angle]
+    }
+
+    fn get_adjacent_edges(
+        edge: usize,
+        cell: usize,
+        edge_cell_indices: &[u32],
+        edge_vertex_indices: &[u32],
+        cell_edge_indices: &[u32],
+    ) -> [usize; 2] {
+        let mut left_edge = 0;
+        let mut right_edge = 0;
+        let is_secondary = cell == edge_cell_indices[edge * 2 + 1] as usize;
+
+        let mut left_vertex = edge_vertex_indices[edge * 2] as usize;
+        let mut right_vertex = edge_vertex_indices[edge * 2 + 1] as usize;
+        if is_secondary {
+            left_vertex = left_vertex ^ right_vertex;
+            right_vertex = left_vertex ^ right_vertex;
+            left_vertex = left_vertex ^ right_vertex;
+        }
+
+        for i in 0..3 {
+            let other_edge = cell_edge_indices[cell * 3 + i] as usize;
+            if other_edge == edge {
+                continue;
+            }
+            let other_left_vertex = edge_vertex_indices[other_edge * 2] as usize;
+            let other_right_vertex = edge_vertex_indices[other_edge * 2 + 1] as usize;
+            if other_left_vertex == left_vertex || other_right_vertex == left_vertex {
+                left_edge = other_edge;
+            } else if other_left_vertex == right_vertex || other_right_vertex == right_vertex {
+                right_edge = other_edge;
+            }
+        }
+
+        [left_edge, right_edge]
+    }
+    fn calculate_edge_lenths(grid: &MeshGrid) -> Vec<f32> {
+        let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().len()];
+        for (i, length) in edge_lengths.iter_mut().enumerate() {
+            let left_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2] as usize;
+            let right_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2 + 1] as usize;
+            let left_vertex = grid.sphere().raw_points()[left_vertex_idx] * SPHERE_RADIUS;
+            let right_vertex = grid.sphere().raw_points()[right_vertex_idx] * SPHERE_RADIUS;
+            *length = left_vertex.distance(right_vertex);
+        }
+        edge_lengths
+    }
+
+    #[test]
+    fn it_has_no_holonomy() {
+        let grid = MeshGrid::new(5);
+        let edge_lengths = calculate_edge_lenths(&grid);
+        // Path around the equator of the mesh
+        let path = vec![
+            712, 710, 369, 370, 372, 395, 398, 376, 375, 384, 633, 634, 661, 659, 312, 313, 315,
+            338, 341, 319, 318, 327, 582, 583, 610, 608, 540, 541, 543, 566, 569, 547, 546, 555,
+            786, 787, 814, 812, 483, 484, 486, 509, 512, 490, 489, 498, 735, 736, 763, 761, 426,
+            427, 429, 452, 455, 433, 432, 441, 684, 685, 712,
+        ];
+
+        let mut last_cell = grid.edge_cell_adjacency().get(path[0]).next().unwrap();
+        let mut last_edge = path[0];
+        let mut vector_direction = 1.0;
+        let initial_vector_direction = vector_direction;
+        for &edge in &path[1..] {
+            let adjacent_edges = get_adjacent_edges(
+                last_edge,
+                last_cell,
+                grid.edge_cell_adjacency().indices(),
+                grid.edge_vertex_adjacency().indices(),
+                grid.cell_edge_adjacency().indices(),
+            );
+            let cells = grid.edge_cell_adjacency().get(edge).collect::<Vec<_>>();
+            let sign = if cells[0] == last_cell {
+                last_cell = cells[1];
+                -1.0
+            } else {
+                last_cell = cells[0];
+                1.0
+            };
+            let angles = compute_angles(
+                last_edge,
+                adjacent_edges[0],
+                adjacent_edges[1],
+                &edge_lengths,
+            );
+            let is_left = edge == adjacent_edges[0];
+            let geometric_transport = if is_left { angles[0] } else { -angles[1] };
+            let parallel_transport = sign * grid.edge_transport_connection()[edge];
+            vector_direction += parallel_transport + geometric_transport;
+            vector_direction = mod_tau(vector_direction);
+            last_edge = edge;
+        }
+        assert!(
+            (vector_direction - initial_vector_direction).abs() < 1e-5,
+            "{vector_direction}"
+        );
     }
 }

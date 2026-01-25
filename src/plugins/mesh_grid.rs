@@ -19,7 +19,7 @@ pub struct MeshGridPlugin;
 
 impl Plugin for MeshGridPlugin {
     fn build(&self, app: &mut App) {
-        let grid = MeshGrid::new(20);
+        let grid = MeshGrid::new(100);
         app.insert_resource(grid.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(grid);
@@ -180,6 +180,14 @@ fn setup_edge_topology(
         &edge_centroid_distance,
         &render_device,
         Some("edge_centroid_distance"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        grid.edge_transport_connection(),
+        &render_device,
+        Some("edge_transport_connection"),
         visibility,
         usage,
         true,

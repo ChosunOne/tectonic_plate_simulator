@@ -25,6 +25,7 @@ struct SimParams {
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 @group(3) @binding(0) var<uniform> sim_params: SimParams;
 
@@ -83,7 +84,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var angle = PI / 2.0;
     if primary_phi < secondary_phi {
-        angle   += PI;
+        angle = angle + PI;
     }
 
     let mag = sim_params.dt * abs(primary_phi - secondary_phi) / (RHO * d);

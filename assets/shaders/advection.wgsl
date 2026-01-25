@@ -29,6 +29,7 @@ struct DepartureInfo {
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams;
 
@@ -267,12 +268,12 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
     let phi_b = TAU / 4.0 - phi_a;
     let phi_c = angles.x - phi_b;
 
-        // The projection of `pos` to the left edge
+    // The projection of `pos` to the left edge
     let p_ca = left_edge_length - d_a * cos(phi_c);
 
     let d_3 = d_a * sin(phi_c);
     if abs(d_3) < EPS {
-                // Degenerate case, point is along the left edge
+        // Degenerate case, point is along the left edge
         if p_ca < left_midpoint {
             let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
             var v = interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
@@ -294,11 +295,11 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
     let a = sqrt(max(s * (s - d_b) * (s - d_c) * (s - right_edge_length), 0.0));
     let d_2 = 2.0 * a / right_edge_length;
 
-        // The projection of `pos` to the right edge
+    // The projection of `pos` to the right edge
     let p_bc = right_edge_length - sqrt(max(d_c * d_c - d_2 * d_2, 0.0));
 
     if abs(d_2) < EPS {
-                // Degenerate case, point is along the right edge
+        // Degenerate case, point is along the right edge
         if p_bc < right_midpoint {
             let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
             var v = interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
@@ -352,7 +353,7 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
     var vp = vec2<f32>(0.0, 0.0);
     var d_total = 0.0;
     for (var i = 0u; i < 3u; i++) {
-        d_total   += edge_lengths[edges[i]] / max(d[i], EPS);
+        d_total = d_total + edge_lengths[edges[i]] / max(d[i], EPS);
     }
     for (var i = 0u; i < 3u; i++) {
         var scaled_v = v[i];
@@ -429,6 +430,17 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         } else if effective_angle > 0.0 && effective_angle < PI {
             base_edge = right_edge;
             angle_offset = mod_tau(angle_offset - angles.y);
+        }
+
+        // need to determine if we are crossing from secondary to primary
+        // or from primary to secondary
+        let new_primary_cell = edge_cell_indices[base_edge * 2u];
+        if cell == new_primary_cell {
+            // primary -> secondary
+            angle_offset = mod_tau(angle_offset - edge_transport_connection[base_edge]);
+        } else {
+            // secondary -> primary
+            angle_offset = mod_tau(angle_offset + edge_transport_connection[base_edge]);
         }
     }
 

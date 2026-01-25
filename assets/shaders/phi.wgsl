@@ -17,6 +17,7 @@ const EPS: f32 = 1.1920929e-7;
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 // gets the edge dividing the two cells
 fn get_dividing_edge(cell_a: u32, cell_b: u32) -> u32 {
@@ -61,8 +62,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let neighbor_idx = cell_cell_indices[cell_idx * 3u + i];
         let edge_idx = get_dividing_edge(cell_idx, neighbor_idx);
         let w = edge_lengths[edge_idx] / edge_centroid_distance[edge_idx];
-        neighbor_sum         += w * phi_in[neighbor_idx];
-        weight_sum         += w;
+        neighbor_sum           += w * phi_in[neighbor_idx];
+        weight_sum           += w;
     }
 
     let phi = (neighbor_sum - cell_area(cell_idx) * divergence[cell_idx]) / weight_sum;

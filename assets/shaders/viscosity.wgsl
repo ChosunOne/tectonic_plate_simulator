@@ -21,7 +21,8 @@ struct SimParams {
 @group(1) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
 @group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
-@group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams; 
 
@@ -112,7 +113,7 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
     var left_edge = adjacent_edges.x;
     var right_edge = adjacent_edges.y;
 
-        // swap the left and right edges
+    // swap the left and right edges
     if !primary {
         left_edge = left_edge ^ right_edge;
         right_edge = left_edge ^ right_edge;
@@ -121,19 +122,18 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
     let angles = compute_angles(edge_a_idx, left_edge, right_edge);
 
     var angle_offset = 0.0;
-        // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees.
+    // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees.
 
     if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u] && primary {
-        angle_offset   += PI;
+        angle_offset = angle_offset + PI;
     }
     if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u + 1u] && !primary {
-        angle_offset   += PI;
+        angle_offset = angle_offset + PI;
     }
 
-
-        // This represents the "left" edge of our triangle
+    // This represents the "left" edge of our triangle
     var angle_sign = 1.0;
-        // This is the "right" edge of our triangle
+    // This is the "right" edge of our triangle
     if right_edge == edge_b_idx {
         angle_offset = mod_tau(angle_offset - angles.y);
         return angle_offset;
@@ -165,7 +165,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     for (var i: u32 = 0u; i < 3; i++) {
         let primary_edge_idx = cell_edge_indices[primary_cell * 3u + i];
-                // only average the *other* velocities surrounding the one we want to update.
+        // only average the *other* velocities surrounding the one we want to update.
         if primary_edge_idx == edge_idx {
             continue;
         }
@@ -184,19 +184,19 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-                // Flip 180 since we are dealing with the secondary cell
-        let angle_offset = get_angle_offset(edge_idx, secondary_edge_idx, false) + PI;
+        // Flip 180 since we are dealing with the secondary cell
+        let angle_offset = mod_tau(get_angle_offset(edge_idx, secondary_edge_idx, false) + PI);
 
         let secondary_edge_velocity = velocity_in[secondary_edge_idx];
-        let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, mod_tau(secondary_edge_velocity.y + angle_offset));
+        let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, mod_tau(secondary_edge_velocity.y + angle_offset - edge_transport_connection[edge_idx]));
 
         avg_vel = add_velocity(avg_vel, adjusted_velocity);
     }
-    avg_vel.x   *= 0.25;
+    avg_vel.x = avg_vel.x * 0.25;
 
     let neg_velocity = vec2<f32>(velocity_in[edge_idx].x, velocity_in[edge_idx].y + PI);
     var avg_diff = add_velocity(avg_vel, neg_velocity);
-    avg_diff.x   *= sim_params.dt * VISCOSITY;
+    avg_diff.x = avg_diff.x * sim_params.dt * VISCOSITY;
     if abs(avg_diff.x) < EPS {
         velocity_out[edge_idx] = velocity_in[edge_idx];
         return;

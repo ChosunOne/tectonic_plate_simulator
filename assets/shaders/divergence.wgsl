@@ -24,6 +24,7 @@ struct SimParams {
 @group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
+@group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 @group(3) @binding(0) var<uniform> sim_params: SimParams;
 
@@ -79,7 +80,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         if abs(sin(angle)) < EPS || abs(mag) < EPS {
             continue;
         }
-        sum   += mag * sin(angle) * edge_lengths[edge_idx];
+        sum = sum + mag * sin(angle) * edge_lengths[edge_idx];
     }
     sum = RHO * sum / (sim_params.dt * cell_area(cell_idx));
     if abs(sum) < EPS {
