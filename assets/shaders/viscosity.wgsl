@@ -1,6 +1,6 @@
 const PI: f32 = 3.1415927;
 const TAU: f32 = 6.2831855;
-const VISCOSITY: f32 = 0.000;
+const VISCOSITY: f32 = 0.001;
 const EPS: f32 = 1.1920929e-7;
 
 struct SimParams {
@@ -10,16 +10,16 @@ struct SimParams {
 @group(0) @binding(0) var<storage, read> velocity_in: array<vec2<f32>>;
 @group(0) @binding(1) var<storage, read_write> velocity_out: array<vec2<f32>>;
 
-@group(1) @binding(0) var<storage, read> edge_vertex_indices: array<u32>;
-@group(1) @binding(1) var<storage, read> edge_cell_indices: array<u32>;
-@group(1) @binding(2) var<storage, read> cell_edge_indices: array<u32>;
+@group(1) @binding(0) var<storage, read> edge_vertex_data: array<u32>;
+@group(1) @binding(1) var<storage, read> edge_cell_data: array<u32>;
+@group(1) @binding(2) var<storage, read> cell_edge_data: array<u32>;
 @group(1) @binding(3) var<storage, read> cell_vertices: array<u32>;
-@group(1) @binding(4) var<storage, read> vertex_edge_offsets: array<u32>;
-@group(1) @binding(5) var<storage, read> vertex_edge_indices: array<u32>;
+@group(1) @binding(4) var<storage, read> vertex_edge_indices: array<u32>;
+@group(1) @binding(5) var<storage, read> vertex_edge_data: array<u32>;
 @group(1) @binding(6) var<storage, read> vertex_angle_offsets: array<f32>;
-@group(1) @binding(7) var<storage, read> cell_cell_indices: array<u32>;
-@group(1) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
-@group(1) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
+@group(1) @binding(7) var<storage, read> cell_cell_data: array<u32>;
+@group(1) @binding(8) var<storage, read> vertex_cell_indices: array<u32>;
+@group(1) @binding(9) var<storage, read> vertex_cell_data: array<u32>;
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
@@ -82,16 +82,16 @@ fn get_adjacent_edges(edge: u32, cell: u32) -> vec2<u32> {
     var left_edge = edge;
     var right_edge = edge;
 
-    let left_vertex = edge_vertex_indices[edge * 2u];
-    let right_vertex = edge_vertex_indices[edge * 2u + 1u];
+    let left_vertex = edge_vertex_data[edge * 2u];
+    let right_vertex = edge_vertex_data[edge * 2u + 1u];
 
     for (var i = 0u; i < 3u; i++) {
-        let other_edge = cell_edge_indices[cell * 3u + i];
+        let other_edge = cell_edge_data[cell * 3u + i];
         if other_edge == edge {
             continue;
         }
-        let other_left_vertex = edge_vertex_indices[other_edge * 2u];
-        let other_right_vertex = edge_vertex_indices[other_edge * 2u + 1u];
+        let other_left_vertex = edge_vertex_data[other_edge * 2u];
+        let other_right_vertex = edge_vertex_data[other_edge * 2u + 1u];
         if other_left_vertex == left_vertex || other_right_vertex == left_vertex {
             left_edge = other_edge;
         } else if other_left_vertex == right_vertex || other_right_vertex == right_vertex {
@@ -103,9 +103,9 @@ fn get_adjacent_edges(edge: u32, cell: u32) -> vec2<u32> {
 }
 
 fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
-    var cell = edge_cell_indices[edge_a_idx * 2u];
+    var cell = edge_cell_data[edge_a_idx * 2u];
     if !primary {
-        cell = edge_cell_indices[edge_a_idx * 2u + 1u];
+        cell = edge_cell_data[edge_a_idx * 2u + 1u];
     }
 
     let adjacent_edges = get_adjacent_edges(edge_a_idx, cell);
@@ -124,10 +124,10 @@ fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
     var angle_offset = 0.0;
     // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees.
 
-    if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u] && primary {
+    if edge_cell_data[edge_b_idx * 2u] == edge_cell_data[edge_a_idx * 2u] && primary {
         angle_offset = angle_offset + PI;
     }
-    if edge_cell_indices[edge_b_idx * 2u] == edge_cell_indices[edge_a_idx * 2u + 1u] && !primary {
+    if edge_cell_data[edge_b_idx * 2u] == edge_cell_data[edge_a_idx * 2u + 1u] && !primary {
         angle_offset = angle_offset + PI;
     }
 
@@ -158,13 +158,13 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    let primary_cell = edge_cell_indices[edge_idx * 2u];
-    let secondary_cell = edge_cell_indices[edge_idx * 2u + 1u];
+    let primary_cell = edge_cell_data[edge_idx * 2u];
+    let secondary_cell = edge_cell_data[edge_idx * 2u + 1u];
 
     var avg_vel = vec2<f32>(0.0, 0.0);
 
     for (var i: u32 = 0u; i < 3; i++) {
-        let primary_edge_idx = cell_edge_indices[primary_cell * 3u + i];
+        let primary_edge_idx = cell_edge_data[primary_cell * 3u + i];
         // only average the *other* velocities surrounding the one we want to update.
         if primary_edge_idx == edge_idx {
             continue;
@@ -179,7 +179,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     for (var i: u32 = 0; i < 3; i++) {
-        let secondary_edge_idx = cell_edge_indices[secondary_cell * 3u + i];
+        let secondary_edge_idx = cell_edge_data[secondary_cell * 3u + i];
         if secondary_edge_idx == edge_idx {
             continue;
         }

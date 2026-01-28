@@ -54,7 +54,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         edge_vertex_adjacency.data(),
         &render_device,
-        Some("edge_vertex_indices"),
+        Some("edge_vertex_data"),
         visibility,
         usage,
         true,
@@ -62,7 +62,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         edge_cell_adjacency.data(),
         &render_device,
-        Some("edge_cell_indices"),
+        Some("edge_cell_data"),
         visibility,
         usage,
         true,
@@ -70,7 +70,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         cell_edge_adjacency.data(),
         &render_device,
-        Some("cell_edge_indices"),
+        Some("cell_edge_data"),
         visibility,
         usage,
         true,
@@ -86,7 +86,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         vertex_edge_adjacency.indptr().as_slice().unwrap(),
         &render_device,
-        Some("vertex_edge_offsets"),
+        Some("vertex_edge_indices"),
         visibility,
         usage,
         true,
@@ -94,7 +94,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         vertex_edge_adjacency.data(),
         &render_device,
-        Some("vertex_edge_indices"),
+        Some("vertex_edge_data"),
         visibility,
         usage,
         true,
@@ -110,7 +110,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         cell_adjacency.data(),
         &render_device,
-        Some("cell_cell_indices"),
+        Some("cell_cell_data"),
         visibility,
         usage,
         true,
@@ -118,7 +118,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         vertex_cell_adjacency.indptr().as_slice().unwrap(),
         &render_device,
-        Some("vertex_cell_offsets"),
+        Some("vertex_cell_indices"),
         visibility,
         usage,
         true,
@@ -126,7 +126,7 @@ fn setup_edge_topology(
     builder.add_buffer_data(
         vertex_cell_adjacency.data(),
         &render_device,
-        Some("vertex_cell_indices"),
+        Some("vertex_cell_data"),
         visibility,
         usage,
         true,

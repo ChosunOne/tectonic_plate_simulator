@@ -930,6 +930,59 @@ fn cell_area(edges: &[usize], edge_lengths: &[f32]) -> f32 {
 mod test {
     use super::*;
 
+    fn get_csr_value(
+        row_offsets: &[u32],
+        col_indices: &[u32],
+        values: &[f32],
+        row: u32,
+        col: u32,
+    ) -> f32 {
+        let mut left = row_offsets[row as usize];
+        let mut right = row_offsets[(row + 1) as usize] - 1;
+
+        let mut first_true_col = u32::MAX;
+        while left <= right {
+            let mid = left + (right - left) / 2;
+            if col_indices[mid as usize] >= col {
+                first_true_col = mid;
+                if mid == 0 {
+                    break;
+                }
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+
+        if first_true_col == u32::MAX || col_indices[first_true_col as usize] != col {
+            return f32::NAN;
+        }
+
+        values[first_true_col as usize]
+    }
+
+    #[test]
+    fn test_parallel_transport_access() {
+        let grid = MeshGrid::new(20);
+        let num_edges = grid.edge_lengths().len();
+        for i in 0..num_edges {
+            for j in 0..num_edges {
+                let csr_val = get_csr_value(
+                    grid.edge_parallel_transport().indptr().as_slice().unwrap(),
+                    grid.edge_parallel_transport().indices(),
+                    grid.edge_parallel_transport().data(),
+                    i as u32,
+                    j as u32,
+                );
+                if let Some(&v) = grid.edge_parallel_transport().get(i, j) {
+                    assert_eq!(v, csr_val);
+                } else {
+                    assert!(csr_val.is_nan());
+                }
+            }
+        }
+    }
+
     #[test]
     fn it_calculates_curvature() {
         let grid = MeshGrid::new(20);

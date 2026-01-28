@@ -3,24 +3,24 @@
 @group(1) @binding(0) var<storage, read_write> divergence: array<f32>;
 
 
-@group(2) @binding(0) var<storage, read> edge_vertex_indices: array<u32>;
-@group(2) @binding(1) var<storage, read> edge_cell_indices: array<u32>;
-@group(2) @binding(2) var<storage, read> cell_edge_indices: array<u32>;
+@group(2) @binding(0) var<storage, read> edge_vertex_data: array<u32>;
+@group(2) @binding(1) var<storage, read> edge_cell_data: array<u32>;
+@group(2) @binding(2) var<storage, read> cell_edge_data: array<u32>;
 @group(2) @binding(3) var<storage, read> cell_vertices: array<u32>;
-@group(2) @binding(4) var<storage, read> vertex_edge_offsets: array<u32>;
-@group(2) @binding(5) var<storage, read> vertex_edge_indices: array<u32>;
+@group(2) @binding(4) var<storage, read> vertex_edge_indices: array<u32>;
+@group(2) @binding(5) var<storage, read> vertex_edge_data: array<u32>;
 @group(2) @binding(6) var<storage, read> vertex_angle_offsets: array<f32>;
-@group(2) @binding(7) var<storage, read> cell_cell_indices: array<u32>;
-@group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
-@group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(7) var<storage, read> cell_cell_data: array<u32>;
+@group(2) @binding(8) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(9) var<storage, read> vertex_cell_data: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
 
 fn cell_area(cell: u32) -> f32 {
-    let base_edge = cell_edge_indices[cell * 3u];
-    let left_edge = cell_edge_indices[cell * 3u + 1u];
-    let right_edge = cell_edge_indices[cell * 3u + 2u];
+    let base_edge = cell_edge_data[cell * 3u];
+    let left_edge = cell_edge_data[cell * 3u + 1u];
+    let right_edge = cell_edge_data[cell * 3u + 2u];
 
     let a = edge_lengths[base_edge];
     let b = edge_lengths[left_edge];
@@ -39,16 +39,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    let start = vertex_cell_offsets[vertex_idx];
-    let end = vertex_cell_offsets[vertex_idx + 1u];
+    let start = vertex_cell_indices[vertex_idx];
+    let end = vertex_cell_indices[vertex_idx + 1u];
 
     var sum = 0.0;
     var area_sum = 0.0;
     for (var i = start; i < end; i++) {
-        let cell_idx = vertex_cell_indices[i];
+        let cell_idx = vertex_cell_data[i];
         let area = cell_area(cell_idx);
-        sum     += divergence[cell_idx] * area;
-        area_sum     += area;
+        sum = sum + divergence[cell_idx] * area;
+        area_sum = area_sum + area;
     }
 
     vertex_divergence[vertex_idx] = sum / area_sum;

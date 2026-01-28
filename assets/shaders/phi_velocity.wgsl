@@ -13,16 +13,16 @@ struct SimParams {
 @group(1) @binding(0) var<storage, read> phi_in: array<f32>;
 @group(1) @binding(1) var<storage, read_write> phi_out: array<f32>;
 
-@group(2) @binding(0) var<storage, read> edge_vertex_indices: array<u32>;
-@group(2) @binding(1) var<storage, read> edge_cell_indices: array<u32>;
-@group(2) @binding(2) var<storage, read> cell_edge_indices: array<u32>;
+@group(2) @binding(0) var<storage, read> edge_vertex_data: array<u32>;
+@group(2) @binding(1) var<storage, read> edge_cell_data: array<u32>;
+@group(2) @binding(2) var<storage, read> cell_edge_data: array<u32>;
 @group(2) @binding(3) var<storage, read> cell_vertices: array<u32>;
-@group(2) @binding(4) var<storage, read> vertex_edge_offsets: array<u32>;
-@group(2) @binding(5) var<storage, read> vertex_edge_indices: array<u32>;
+@group(2) @binding(4) var<storage, read> vertex_edge_indices: array<u32>;
+@group(2) @binding(5) var<storage, read> vertex_edge_data: array<u32>;
 @group(2) @binding(6) var<storage, read> vertex_angle_offsets: array<f32>;
-@group(2) @binding(7) var<storage, read> cell_cell_indices: array<u32>;
-@group(2) @binding(8) var<storage, read> vertex_cell_offsets: array<u32>;
-@group(2) @binding(9) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(7) var<storage, read> cell_cell_data: array<u32>;
+@group(2) @binding(8) var<storage, read> vertex_cell_indices: array<u32>;
+@group(2) @binding(9) var<storage, read> vertex_cell_data: array<u32>;
 @group(2) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(2) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(2) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
@@ -70,8 +70,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    let primary_cell = edge_cell_indices[edge_idx * 2u];
-    let secondary_cell = edge_cell_indices[edge_idx * 2u + 1u];
+    let primary_cell = edge_cell_data[edge_idx * 2u];
+    let secondary_cell = edge_cell_data[edge_idx * 2u + 1u];
 
     let primary_phi = phi_in[primary_cell];
     let secondary_phi = phi_in[secondary_cell];
