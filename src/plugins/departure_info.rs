@@ -49,7 +49,7 @@ pub fn setup_departure_info(
 ) {
     debug!("Setup departure info");
 
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
 
     let departure_data = vec![DepartureInfo::default(); num_edges];
 

@@ -1,4 +1,4 @@
-use std::{f32::consts::TAU, time::Duration};
+use std::time::Duration;
 
 use bevy::{
     DefaultPlugins,
@@ -51,7 +51,7 @@ fn verify_velocity(
         return;
     };
 
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
 
     let Some(velocity) =
         velocity_bg.read_back_double_buffer_read::<f32>(0, &render_device, &render_queue)

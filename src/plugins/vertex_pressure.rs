@@ -39,7 +39,7 @@ fn setup_vertex_pressure(world: &mut World) {
     debug!("Setup vertex pressure");
     let grid = world.resource::<MeshGrid>();
     let adjacency = grid.vertex_cell_adjacency();
-    let num_vertices = adjacency.len();
+    let num_vertices = adjacency.rows();
 
     let vertex_pressure_data = vec![0.0f32; num_vertices];
 
@@ -49,8 +49,8 @@ fn setup_vertex_pressure(world: &mut World) {
         .label("vertex_pressure")
         .shader("shaders/vertex_pressure.wgsl")
         .workgroups(num_workgroups, 1, 1)
-        .buffer_read(adjacency.offsets().to_vec())
-        .buffer_read(adjacency.indices().to_vec())
+        .buffer_read(adjacency.indptr().as_slice().unwrap().to_vec())
+        .buffer_read(adjacency.data().to_vec())
         .buffer(
             vertex_pressure_data,
             false,

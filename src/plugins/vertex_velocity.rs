@@ -56,7 +56,7 @@ fn setup_vertex_velocity(world: &mut World) {
     debug!("Setup vertex velocity");
     let grid = world.resource::<MeshGrid>();
     let vertex_edge_adjacency = grid.vertex_edge_adjacency();
-    let num_vertices = vertex_edge_adjacency.len();
+    let num_vertices = vertex_edge_adjacency.rows();
     let vertex_velocity_data = vec![[0.0f32, 0.0f32]; num_vertices];
 
     let num_workgroups = (num_vertices as u32).div_ceil(64);
@@ -132,7 +132,7 @@ fn sync_vertex_velocity_to_main(
         return;
     };
 
-    let num_vertices = grid.vertex_edge_adjacency().len();
+    let num_vertices = grid.vertex_edge_adjacency().rows();
     let buffer_size = num_vertices * std::mem::size_of::<[f32; 2]>();
 
     let Some(vertex_velocity) = vertex_velocity_bg.read_back_buffer::<[f32; 2]>(

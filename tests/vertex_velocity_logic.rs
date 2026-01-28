@@ -158,7 +158,7 @@ fn vertex_velocity(
 #[test]
 fn test_vertex_velocity_logic() {
     let grid = MeshGrid::new(10);
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
 
     let mut velocity = vec![[0.0, 0.0]; num_edges];
 
@@ -169,10 +169,10 @@ fn test_vertex_velocity_logic() {
     velocity[1689] = [73.9837, 4.8234];
 
     let vertex_idx = 10;
-    let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().len()];
+    let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().rows()];
     for (i, length) in edge_lengths.iter_mut().enumerate() {
-        let left_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2] as usize;
-        let right_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2 + 1] as usize;
+        let left_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2] as usize;
+        let right_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2 + 1] as usize;
         let left_vertex = grid.sphere().raw_points()[left_vertex_idx] * SPHERE_RADIUS;
         let right_vertex = grid.sphere().raw_points()[right_vertex_idx] * SPHERE_RADIUS;
         *length = left_vertex.distance(right_vertex);
@@ -180,12 +180,12 @@ fn test_vertex_velocity_logic() {
 
     let v_vel = vertex_velocity(
         vertex_idx,
-        grid.vertex_edge_adjacency().offsets(),
-        grid.vertex_edge_adjacency().indices(),
+        grid.vertex_edge_adjacency().indptr().as_slice().unwrap(),
+        grid.vertex_edge_adjacency().data(),
         &velocity,
-        grid.edge_vertex_adjacency().indices(),
-        grid.edge_cell_adjacency().indices(),
-        grid.cell_edge_adjacency().indices(),
+        grid.edge_vertex_adjacency().data(),
+        grid.edge_cell_adjacency().data(),
+        grid.cell_edge_adjacency().data(),
         &edge_lengths,
     );
 

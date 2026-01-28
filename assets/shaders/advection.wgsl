@@ -393,8 +393,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var remaining_mag = edge_velocity.x * sim_params.dt;
     let angle = edge_velocity.y;
 
-        // trace backward, flip the current angle
+    // trace backward, flip the current angle
     var angle_offset = PI;
+
     var d = edge_lengths[base_edge] / 2.0;
     var l_exit = 0.0;
     var cell: u32;

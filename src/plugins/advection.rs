@@ -33,7 +33,7 @@ impl Plugin for AdvectionPlugin {
 pub fn setup_advection(world: &mut World) {
     debug!("Setup advection");
     let grid = world.resource::<MeshGrid>();
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
     let num_workgroups = (num_edges as u32).div_ceil(64);
 
     let advection_pass = ComputePass::builder()

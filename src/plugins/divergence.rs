@@ -48,7 +48,7 @@ pub fn setup_divergence(world: &mut World) {
     let divergence_data = vec![0.0f32; grid.cells().len()];
     let phi_data = vec![0.0f32; grid.cells().len()];
     let num_cells = grid.cells().len();
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
 
     let divergence_pass = ComputePass::builder()
         .label("divergence_pass")

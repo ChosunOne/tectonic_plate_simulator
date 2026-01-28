@@ -46,7 +46,7 @@ pub fn setup_velocity(
     render_device: Res<RenderDevice>,
 ) {
     debug!("Setup velocity");
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
     for i in 0..num_edges {
         let frame = LocalFrame::from_edge(&grid, i);

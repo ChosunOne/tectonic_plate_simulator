@@ -68,7 +68,7 @@ fn verify_vertex_pressure(
         return;
     };
 
-    let num_vertices = grid.vertex_cell_adjacency().len();
+    let num_vertices = grid.vertex_cell_adjacency().rows();
     let Some(vertex_pressure) = vertex_pressure_bg.read_back_buffer::<f32>(
         2,
         num_vertices * std::mem::size_of::<f32>(),
@@ -92,10 +92,18 @@ fn verify_vertex_pressure(
 
     for vertex_idx in 0..num_vertices {
         let expected = vertex_cell_adjacency
-            .get(vertex_idx)
+            .outer_view(vertex_idx)
+            .unwrap()
+            .iter()
+            .map(|(_, &x)| x as usize)
             .map(|cell_idx| pressure[cell_idx])
             .sum::<f32>()
-            / vertex_cell_adjacency.count(vertex_idx) as f32;
+            / vertex_cell_adjacency
+                .outer_view(vertex_idx)
+                .unwrap()
+                .iter()
+                .collect::<Vec<_>>()
+                .len() as f32;
 
         let actual = vertex_pressure[vertex_idx];
         let diff = (actual - expected).abs();

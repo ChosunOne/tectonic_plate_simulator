@@ -62,7 +62,13 @@ pub fn draw_triangle_grid_neighbors(
     }
     for i in 0..grid.cells().len() {
         let center_i = grid.cells()[i].center;
-        for neighbor_idx in grid.cell_adjacency().get(i) {
+        for neighbor_idx in grid
+            .cell_adjacency()
+            .outer_view(i)
+            .expect("to have cells for cell")
+            .iter()
+            .map(|(_, &x)| x as usize)
+        {
             if neighbor_idx > i {
                 // Only draw each connection once
                 let center_j = grid.cells()[neighbor_idx].center;
@@ -91,7 +97,7 @@ pub fn draw_velocity_arrows(
         return;
     }
 
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
 
     for edge_idx in 0..num_edges {
         let frame = LocalFrame::from_edge(&grid, edge_idx);
@@ -132,7 +138,7 @@ pub fn draw_vertex_velocity_arrows(
         return;
     }
 
-    let num_vertices = grid.vertex_edge_adjacency().len();
+    let num_vertices = grid.vertex_edge_adjacency().rows();
 
     for vertex_idx in 0..num_vertices {
         let [mut magnitude, angle] = vertex_velocity[vertex_idx];

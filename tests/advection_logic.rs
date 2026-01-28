@@ -1,7 +1,7 @@
 use std::f32::consts::{PI, TAU};
 
 use tectonic_plate_simulator::{
-    LocalFrame, constants::SPHERE_RADIUS, plugins::departure_info, resources::mesh_grid::MeshGrid,
+    LocalFrame, constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid,
 };
 
 fn shader_mod_tau(theta: f32) -> f32 {
@@ -520,7 +520,7 @@ fn shader_interpolate_edge_velocities(
 #[test]
 fn test_interior_interpolation_logic() {
     let grid = MeshGrid::new(100);
-    let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().len()];
+    let mut velocity = vec![[0.0f32; 2]; grid.edge_cell_adjacency().rows()];
     // These three edges form a triangle
     let base_edge = 2785;
     let primary_left_edge = 2784;
@@ -539,17 +539,17 @@ fn test_interior_interpolation_logic() {
 
     let edge_velocity = velocity[base_edge];
 
-    let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().len()];
+    let mut edge_lengths = vec![0.0f32; grid.edge_cell_adjacency().rows()];
     for (i, length) in edge_lengths.iter_mut().enumerate() {
-        let left_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2] as usize;
-        let right_vertex_idx = grid.edge_vertex_adjacency().indices()[i * 2 + 1] as usize;
+        let left_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2] as usize;
+        let right_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2 + 1] as usize;
         let left_vertex = grid.sphere().raw_points()[left_vertex_idx] * SPHERE_RADIUS;
         let right_vertex = grid.sphere().raw_points()[right_vertex_idx] * SPHERE_RADIUS;
         *length = left_vertex.distance(right_vertex);
     }
 
-    let primary_cell = grid.edge_cell_adjacency().indices()[base_edge * 2];
-    let secondary_cell = grid.edge_cell_adjacency().indices()[base_edge * 2 + 1];
+    let primary_cell = grid.edge_cell_adjacency().data()[base_edge * 2];
+    let secondary_cell = grid.edge_cell_adjacency().data()[base_edge * 2 + 1];
     let mut cell = primary_cell;
     let mut angle_offset = PI;
     let mut d = edge_lengths[base_edge] / 2.0;
@@ -561,9 +561,9 @@ fn test_interior_interpolation_logic() {
     let edges = shader_get_adjacent_edges(
         base_edge as u32,
         cell,
-        grid.edge_cell_adjacency().indices(),
-        grid.edge_vertex_adjacency().indices(),
-        grid.cell_edge_adjacency().indices(),
+        grid.edge_cell_adjacency().data(),
+        grid.edge_vertex_adjacency().data(),
+        grid.cell_edge_adjacency().data(),
     );
 
     let left_edge = edges[0];
@@ -589,9 +589,9 @@ fn test_interior_interpolation_logic() {
         d,
         base_edge as u32,
         cell,
-        grid.edge_cell_adjacency().indices(),
-        grid.edge_vertex_adjacency().indices(),
-        grid.cell_edge_adjacency().indices(),
+        grid.edge_cell_adjacency().data(),
+        grid.edge_vertex_adjacency().data(),
+        grid.cell_edge_adjacency().data(),
         &edge_lengths,
     );
     let l_exit = l_and_d[0];
@@ -619,7 +619,7 @@ fn test_interior_interpolation_logic() {
         cell,
         &edge_lengths,
         &velocity,
-        grid.edge_cell_adjacency().indices(),
+        grid.edge_cell_adjacency().data(),
     );
 
     dbg!(&interpolated_velocity);

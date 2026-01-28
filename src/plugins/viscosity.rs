@@ -31,7 +31,7 @@ impl Plugin for ViscosityPlugin {
 pub fn setup_viscosity(world: &mut World) {
     debug!("Setup viscosity");
     let grid = world.resource::<MeshGrid>();
-    let num_edges = grid.edge_cell_adjacency().len();
+    let num_edges = grid.edge_cell_adjacency().rows();
     let num_workgroups = (num_edges as u32).div_ceil(64);
 
     let viscosity_pass = ComputePass::builder()

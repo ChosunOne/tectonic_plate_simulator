@@ -31,14 +31,17 @@ impl LocalFrame {
         let origin = Vec3::from(SPHERE_RADIUS * points[vertex_idx]);
         let normal = origin.normalize();
 
-        let edge_0_idx = grid
+        let edge_0_idx = *grid
             .vertex_edge_adjacency()
-            .get(vertex_idx)
-            .next()
-            .expect("vertex should have at least one adjacent edge");
+            .get(vertex_idx, 0)
+            .expect("vertex should have at least one adjacent edge")
+            as usize;
         let edge_0_verts = grid
             .edge_vertex_adjacency()
-            .get(edge_0_idx)
+            .outer_view(edge_0_idx)
+            .expect("to have vertices for edge")
+            .iter()
+            .map(|(_, &x)| x as usize)
             .collect::<Vec<_>>();
         let v_other = if edge_0_verts[0] == vertex_idx {
             edge_0_verts[1]
@@ -68,7 +71,13 @@ impl LocalFrame {
         let surface_normal = origin.normalize();
         let perp = surface_normal.cross(edge_dir).normalize();
 
-        let edge_cells = grid.edge_cell_adjacency().get(edge_idx).collect::<Vec<_>>();
+        let edge_cells = grid
+            .edge_cell_adjacency()
+            .outer_view(edge_idx)
+            .expect("to have cells for edge")
+            .iter()
+            .map(|(_, &x)| x as usize)
+            .collect::<Vec<_>>();
         let primary_cell_center = grid.cells()[edge_cells[0]].center;
         let to_primary = primary_cell_center - origin;
         let axis_y = if to_primary.dot(perp) > 0.0 {
@@ -97,7 +106,10 @@ impl LocalFrame {
         let points = grid.sphere().raw_points();
         let edge_verts = grid
             .edge_vertex_adjacency()
-            .get(edge_idx)
+            .outer_view(edge_idx)
+            .expect("to have vertices for edge")
+            .iter()
+            .map(|(_, &x)| x as usize)
             .collect::<Vec<_>>();
         let v_low = Vec3::from(points[edge_verts[0]] * SPHERE_RADIUS);
         let v_high = Vec3::from(points[edge_verts[1]] * SPHERE_RADIUS);

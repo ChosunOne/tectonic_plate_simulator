@@ -45,7 +45,7 @@ fn verify_topology(
     let edge_cell_adjacency = grid.edge_cell_adjacency();
     let cell_edge_adjacency = grid.cell_edge_adjacency();
 
-    let num_edges = edge_vertex_adjacency.len();
+    let num_edges = edge_vertex_adjacency.rows();
     let num_cells = grid.cells().len();
 
     let edge_indices_size = num_edges * 2 * std::mem::size_of::<u32>();
@@ -57,7 +57,7 @@ fn verify_topology(
 
     assert_eq!(
         &edge_vertex_indices,
-        edge_vertex_adjacency.indices(),
+        edge_vertex_adjacency.data(),
         "edge_vertex_indices mismatch"
     );
 
@@ -69,7 +69,7 @@ fn verify_topology(
 
     assert_eq!(
         &edge_cell_indices,
-        edge_cell_adjacency.indices(),
+        edge_cell_adjacency.data(),
         "edge_cell_indices mismatch"
     );
 
@@ -81,7 +81,7 @@ fn verify_topology(
     };
     assert_eq!(
         &cell_edge_indices,
-        cell_edge_adjacency.indices(),
+        cell_edge_adjacency.data(),
         "cell_edge_indices mismatch"
     );
 

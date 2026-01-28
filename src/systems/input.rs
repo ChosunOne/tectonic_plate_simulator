@@ -210,13 +210,18 @@ pub fn handle_selection_input(
 
     let points = grid.sphere().raw_points();
     let edge_vertex_adjacency = grid.edge_vertex_adjacency();
-    let num_edges = edge_vertex_adjacency.len();
+    let num_edges = edge_vertex_adjacency.rows();
 
     let mut nearest_edge = None;
     let mut nearest_distance_sq = f32::MAX;
 
     for edge_idx in 0..num_edges {
-        let edge_verts = edge_vertex_adjacency.get(edge_idx).collect::<Vec<_>>();
+        let edge_verts = edge_vertex_adjacency
+            .outer_view(edge_idx)
+            .expect("to have vertices for edge")
+            .iter()
+            .map(|(_, &x)| x as usize)
+            .collect::<Vec<_>>();
         let v_lower_pos = points[edge_verts[0]] * SPHERE_RADIUS;
         let v_higher_pos = points[edge_verts[1]] * SPHERE_RADIUS;
 

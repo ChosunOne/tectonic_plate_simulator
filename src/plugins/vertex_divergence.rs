@@ -42,7 +42,7 @@ impl Plugin for VertexDivergencePlugin {
 fn setup_vertex_divergence(world: &mut World) {
     debug!("Setup vertex divergence");
     let grid = world.resource::<MeshGrid>();
-    let num_vertices = grid.vertex_cell_adjacency().len();
+    let num_vertices = grid.vertex_cell_adjacency().rows();
 
     let vertex_divergence_data = vec![0.0f32; num_vertices];
     let num_workgroups = (num_vertices as u32).div_ceil(64);
