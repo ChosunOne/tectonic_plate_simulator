@@ -2,6 +2,7 @@ const PI: f32 = 3.1415927;
 const TAU: f32 = 6.2831855;
 const VISCOSITY: f32 = 0.001;
 const EPS: f32 = 1.1920929e-7;
+const MAX: u32 = 4294967295u;
 
 struct SimParams {
     dt: f32
@@ -23,8 +24,37 @@ struct SimParams {
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
+@group(1) @binding(13) var<storage, read> edge_parallel_transport_row_indices: array<u32>;
+@group(1) @binding(14) var<storage, read> edge_parallel_transport_col_indices: array<u32>;
+@group(1) @binding(15) var<storage, read> edge_parallel_transport_data: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams; 
+
+fn get_transport_value(row: u32, col: u32) -> f32 {
+    var left = edge_parallel_transport_row_indices[row];
+    var right = edge_parallel_transport_row_indices[row + 1u] - 1u;
+    var first_true_col = MAX;
+    while left <= right {
+        let mid = left + (right - left) / 2;
+        if edge_parallel_transport_col_indices[mid] >= col {
+            first_true_col = mid;
+            if mid == 0 {
+                break;
+            }
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    if first_true_col == MAX || edge_parallel_transport_col_indices[first_true_col] != col {
+        // return NaN
+        let x = -1.0;
+        return inverseSqrt(x);
+    }
+
+    return edge_parallel_transport_data[first_true_col];
+}
 
 fn mod_tau(theta: f32) -> f32 {
     if theta >= 0.0 && theta < TAU {
@@ -57,91 +87,6 @@ fn add_velocity(vel_a: vec2<f32>, vel_b: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(new_mag, new_angle);
 }
 
-// Computes the angles between three edges. The order of the angles
-// is (left_base_angle, right_base_angle, apex_angle)
-fn compute_angles(base: u32, left: u32, right: u32) -> vec3<f32> {
-    let a = edge_lengths[base];
-    let b = edge_lengths[left];
-    let c = edge_lengths[right];
-
-    let a_squared = a * a;
-    let b_squared = b * b;
-    let c_squared = c * c;
-
-    let left_base_angle = acos(
-                clamp((a_squared + b_squared - c_squared) / (2 * a * b), -1.0, 1.0));
-    let right_base_angle = acos(clamp((a_squared + c_squared - b_squared) / (2 * a * c), -1.0, 1.0));
-    let apex_angle = acos(clamp((b_squared + c_squared - a_squared) / (2 * b * c), -1.0, 1.0));
-
-    return vec3<f32>(left_base_angle, right_base_angle, apex_angle);
-}
-
-// Gets the adjacent edges to this one in the indicated cell.
-// Returns (left_edge, right_edge)
-fn get_adjacent_edges(edge: u32, cell: u32) -> vec2<u32> {
-    var left_edge = edge;
-    var right_edge = edge;
-
-    let left_vertex = edge_vertex_data[edge * 2u];
-    let right_vertex = edge_vertex_data[edge * 2u + 1u];
-
-    for (var i = 0u; i < 3u; i++) {
-        let other_edge = cell_edge_data[cell * 3u + i];
-        if other_edge == edge {
-            continue;
-        }
-        let other_left_vertex = edge_vertex_data[other_edge * 2u];
-        let other_right_vertex = edge_vertex_data[other_edge * 2u + 1u];
-        if other_left_vertex == left_vertex || other_right_vertex == left_vertex {
-            left_edge = other_edge;
-        } else if other_left_vertex == right_vertex || other_right_vertex == right_vertex {
-            right_edge = other_edge;
-        }
-    }
-
-    return vec2<u32>(left_edge, right_edge);
-}
-
-fn get_angle_offset(edge_a_idx: u32, edge_b_idx: u32, primary: bool) -> f32 {
-    var cell = edge_cell_data[edge_a_idx * 2u];
-    if !primary {
-        cell = edge_cell_data[edge_a_idx * 2u + 1u];
-    }
-
-    let adjacent_edges = get_adjacent_edges(edge_a_idx, cell);
-
-    var left_edge = adjacent_edges.x;
-    var right_edge = adjacent_edges.y;
-
-    // swap the left and right edges
-    if !primary {
-        left_edge = left_edge ^ right_edge;
-        right_edge = left_edge ^ right_edge;
-        left_edge = left_edge ^ right_edge;
-    }
-    let angles = compute_angles(edge_a_idx, left_edge, right_edge);
-
-    var angle_offset = 0.0;
-    // if the edge's primary cell is the same as our primary cell, its reference is pointing mostly downward, so we need to flip it 180 degrees.
-
-    if edge_cell_data[edge_b_idx * 2u] == edge_cell_data[edge_a_idx * 2u] && primary {
-        angle_offset = angle_offset + PI;
-    }
-    if edge_cell_data[edge_b_idx * 2u] == edge_cell_data[edge_a_idx * 2u + 1u] && !primary {
-        angle_offset = angle_offset + PI;
-    }
-
-    // This represents the "left" edge of our triangle
-    var angle_sign = 1.0;
-    // This is the "right" edge of our triangle
-    if right_edge == edge_b_idx {
-        angle_offset = mod_tau(angle_offset - angles.y);
-        return angle_offset;
-    }
-
-    angle_offset = mod_tau(angle_offset + angles.x);
-    return angle_offset;
-}
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -170,7 +115,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        let angle_offset = get_angle_offset(edge_idx, primary_edge_idx, true);
+        let angle_offset = get_transport_value(primary_edge_idx, edge_idx);
 
         let primary_edge_velocity = velocity_in[primary_edge_idx];
         let adjusted_velocity = vec2<f32>(primary_edge_velocity.x, mod_tau(primary_edge_velocity.y + angle_offset));
@@ -184,8 +129,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             continue;
         }
 
-        // Flip 180 since we are dealing with the secondary cell
-        let angle_offset = mod_tau(get_angle_offset(edge_idx, secondary_edge_idx, false) + PI);
+        let angle_offset = get_transport_value(secondary_edge_idx, edge_idx);
 
         let secondary_edge_velocity = velocity_in[secondary_edge_idx];
         let adjusted_velocity = vec2<f32>(secondary_edge_velocity.x, mod_tau(secondary_edge_velocity.y + angle_offset - edge_transport_connection[edge_idx]));

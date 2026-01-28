@@ -40,6 +40,7 @@ fn setup_edge_topology(
     let vertex_cell_adjacency = grid.vertex_cell_adjacency();
     let edge_lengths = grid.edge_lengths();
     let edge_centroid_distance = grid.edge_centroid_distance();
+    let edge_parallel_transport = grid.edge_parallel_transport();
 
     let cell_vertices = grid
         .cells()
@@ -151,6 +152,30 @@ fn setup_edge_topology(
         grid.edge_connection(),
         &render_device,
         Some("edge_transport_connection"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        edge_parallel_transport.indptr().as_slice().unwrap(),
+        &render_device,
+        Some("edge_parallel_transport_row_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        edge_parallel_transport.indices(),
+        &render_device,
+        Some("edge_parallel_transport_col_indices"),
+        visibility,
+        usage,
+        true,
+    );
+    builder.add_buffer_data(
+        edge_parallel_transport.data(),
+        &render_device,
+        Some("edge_parallel_transport_data"),
         visibility,
         usage,
         true,
