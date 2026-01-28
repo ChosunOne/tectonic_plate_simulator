@@ -1,6 +1,7 @@
 const PI: f32 = 3.1415927;
 const TAU: f32 = 6.2831855;
 const EPS: f32 = 1.1920929e-7;
+const MAX: u32 = 4294967295u;
 
 struct SimParams {
     dt: f32
@@ -30,11 +31,40 @@ struct DepartureInfo {
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
+@group(1) @binding(13) var<storage, read> edge_parallel_transport_row_indices: array<u32>;
+@group(1) @binding(14) var<storage, read> edge_parallel_transport_col_indices: array<u32>;
+@group(1) @binding(15) var<storage, read> edge_parallel_transport_data: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams;
 
 @group(3) @binding(0) var<storage, read> departure_in: array<DepartureInfo>;
 @group(3) @binding(1) var<storage, read_write> departure_out: array<DepartureInfo>;
+
+fn get_transport_value(row: u32, col: u32) -> f32 {
+    var left = edge_parallel_transport_row_indices[row];
+    var right = edge_parallel_transport_row_indices[row + 1u] - 1u;
+    var first_true_col = MAX;
+    while left <= right {
+        let mid = left + (right - left) / 2;
+        if edge_parallel_transport_col_indices[mid] >= col {
+            first_true_col = mid;
+            if mid == 0 {
+                break;
+            }
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    if first_true_col == MAX || edge_parallel_transport_col_indices[first_true_col] != col {
+        // return NaN
+        let x = -1.0;
+        return inverseSqrt(x);
+    }
+
+    return edge_parallel_transport_data[first_true_col];
+}
 
 fn mod_tau(theta: f32) -> f32 {
     if theta >= 0.0 && theta < TAU {
@@ -216,33 +246,21 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
     let left_velocity = velocity_in[edges.y];
     let right_velocity = velocity_in[edges.z];
 
-    let base_secondary_cell = edge_cell_data[edges.x * 2u + 1u];
-    var mirror_result = pos_y > PI || (base_secondary_cell == cell && abs(pos_y - PI) < EPS);
+    var mirror_result = pos_y >= PI;
     if mirror_result {
         pos_y = TAU - pos_y;
     }
 
-    var base_offset = 0.0;
-    if base_secondary_cell == cell {
-        base_offset = mod_tau(base_offset - PI);
-    }
+    let base_offset = 0.0;
 
-    let left_primary_cell = edge_cell_data[edges.y * 2u];
-    var to_left_offset = angles.x;
-    if left_primary_cell == cell {
-        to_left_offset = mod_tau(to_left_offset + PI);
-    }
-    let from_left_offset = mod_tau(-to_left_offset);
+    let to_left_offset = get_transport_value(edges.x, edges.y);
+    let from_left_offset = get_transport_value(edges.y, edges.x);
 
-    let right_primary_cell = edge_cell_data[edges.z * 2u];
 
-    var to_right_offset = mod_tau(-angles.y);
-    if right_primary_cell == cell {
-        to_right_offset = mod_tau(to_right_offset + PI);
-    }
-    let from_right_offset = mod_tau(-to_right_offset);
+    let to_right_offset = get_transport_value(edges.x, edges.z);
+    let from_right_offset = get_transport_value(edges.z, edges.x);
 
-        // The projection of `pos` to the base edge.
+    // The projection of `pos` to the base edge.
     let p_ab = base_midpoint - pos_x * cos(pos_y);
 
     let d_1 = pos_x * sin(pos_y);
@@ -250,18 +268,10 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
                 // Degenerate case, point is along base edge
         if p_ab < base_midpoint {
             let q = (p_ab + left_midpoint) / (base_midpoint + left_midpoint);
-            var v = interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
-            if mirror_result {
-                v.y = mod_tau(PI + v.y);
-            }
-            return v;
+            return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
         }
         let q = (p_ab - base_midpoint) / (base_midpoint + right_midpoint);
-        var v = interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
-        if mirror_result {
-            v.y = mod_tau(PI + v.y);
-        }
-        return v;
+        return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
     }
     let d_a = sqrt(p_ab * p_ab + d_1 * d_1);
     let phi_a = acos(clamp((d_1 * d_1 + d_a * d_a - p_ab * p_ab) / (2.0 * d_1 * d_a), -1.0, 1.0));
@@ -276,18 +286,10 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
         // Degenerate case, point is along the left edge
         if p_ca < left_midpoint {
             let q = (p_ca + right_midpoint) / (left_midpoint + right_midpoint);
-            var v = interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
-            if mirror_result {
-                v.y = mod_tau(PI + v.y);
-            }
-            return v;
+            return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
         }
         let q = (p_ca - left_midpoint) / (left_midpoint + base_midpoint);
-        var v = interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
-        if mirror_result {
-            v.y = mod_tau(PI + v.y);
-        }
-        return v;
+        return interpolate_velocity_with_offsets(q, left_velocity, base_velocity, from_left_offset, base_offset);
     }
     let d_c = sqrt(p_ca * p_ca + d_3 * d_3);
     let d_b = sqrt((base_edge_length - p_ab) * (base_edge_length - p_ab) + d_1 * d_1);
@@ -302,18 +304,10 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
         // Degenerate case, point is along the right edge
         if p_bc < right_midpoint {
             let q = (p_bc + base_midpoint) / (right_midpoint + base_midpoint);
-            var v = interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
-            if mirror_result {
-                v.y = mod_tau(PI + v.y);
-            }
-            return v;
+            return interpolate_velocity_with_offsets(q, base_velocity, right_velocity, base_offset, from_right_offset);
         }
         let q = (p_bc - right_midpoint) / (right_midpoint + left_midpoint);
-        var v = interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
-        if mirror_result {
-            v.y = mod_tau(PI + v.y);
-        }
-        return v;
+        return interpolate_velocity_with_offsets(q, right_velocity, left_velocity, from_right_offset, from_left_offset);
     }
 
     var q1: f32;
@@ -351,19 +345,15 @@ fn interpolate_edge_velocities(pos: vec2<f32>, angles: vec3<f32>, edges: vec3<u3
     let d = array<f32, 3>(d_1, d_2, d_3);
 
     var vp = vec2<f32>(0.0, 0.0);
-    var d_total = 0.0;
+    var w_total = 0.0;
     for (var i = 0u; i < 3u; i++) {
-        d_total = d_total + edge_lengths[edges[i]] / max(d[i], EPS);
+        w_total = w_total + 1.0 / max(d[i], EPS);
     }
     for (var i = 0u; i < 3u; i++) {
         var scaled_v = v[i];
-        let weight = (edge_lengths[edges[i]] / max(d[i], EPS)) / d_total;
-        scaled_v.x = scaled_v.x * weight;
+        let normalized_weight = (1.0 / max(d[i], EPS)) / w_total;
+        scaled_v.x = scaled_v.x * normalized_weight;
         vp = add_velocity(vp, scaled_v);
-    }
-
-    if mirror_result {
-        vp.y = mod_tau(PI + vp.y);
     }
 
     return vp;
@@ -426,22 +416,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         d = l_and_d.y;
         remaining_mag = max(remaining_mag - l_exit, 0.0);
         if effective_angle > 0.0 && effective_angle < critical_angle {
+            angle_offset = mod_tau(angle_offset + get_transport_value(base_edge, left_edge));
             base_edge = left_edge;
-            angle_offset = mod_tau(angle_offset + angles.x);
         } else if effective_angle > 0.0 && effective_angle < PI {
+            angle_offset = mod_tau(angle_offset + get_transport_value(base_edge, right_edge));
             base_edge = right_edge;
-            angle_offset = mod_tau(angle_offset - angles.y);
-        }
-
-        // need to determine if we are crossing from secondary to primary
-        // or from primary to secondary
-        let new_primary_cell = edge_cell_data[base_edge * 2u];
-        if cell == new_primary_cell {
-            // primary -> secondary
-            angle_offset = mod_tau(angle_offset - edge_transport_connection[base_edge]);
-        } else {
-            // secondary -> primary
-            angle_offset = mod_tau(angle_offset + edge_transport_connection[base_edge]);
         }
     }
 
