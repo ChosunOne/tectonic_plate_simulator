@@ -31,9 +31,9 @@ struct DepartureInfo {
 @group(1) @binding(10) var<storage, read> edge_lengths: array<f32>;
 @group(1) @binding(11) var<storage, read> edge_centroid_distance: array<f32>;
 @group(1) @binding(12) var<storage, read> edge_transport_connection: array<f32>;
-@group(1) @binding(13) var<storage, read> edge_parallel_transport_row_indices: array<u32>;
-@group(1) @binding(14) var<storage, read> edge_parallel_transport_col_indices: array<u32>;
-@group(1) @binding(15) var<storage, read> edge_parallel_transport_data: array<f32>;
+@group(1) @binding(13) var<storage, read> edge_transport_row_indices: array<u32>;
+@group(1) @binding(14) var<storage, read> edge_transport_col_indices: array<u32>;
+@group(1) @binding(15) var<storage, read> edge_transport_data: array<f32>;
 
 @group(2) @binding(0) var<uniform> sim_params: SimParams;
 
@@ -41,12 +41,12 @@ struct DepartureInfo {
 @group(3) @binding(1) var<storage, read_write> departure_out: array<DepartureInfo>;
 
 fn get_transport_value(row: u32, col: u32) -> f32 {
-    var left = edge_parallel_transport_row_indices[row];
-    var right = edge_parallel_transport_row_indices[row + 1u] - 1u;
+    var left = edge_transport_row_indices[row];
+    var right = edge_transport_row_indices[row + 1u] - 1u;
     var first_true_col = MAX;
     while left <= right {
         let mid = left + (right - left) / 2;
-        if edge_parallel_transport_col_indices[mid] >= col {
+        if edge_transport_col_indices[mid] >= col {
             first_true_col = mid;
             if mid == 0 {
                 break;
@@ -57,13 +57,13 @@ fn get_transport_value(row: u32, col: u32) -> f32 {
         }
     }
 
-    if first_true_col == MAX || edge_parallel_transport_col_indices[first_true_col] != col {
+    if first_true_col == MAX || edge_transport_col_indices[first_true_col] != col {
         // return NaN
         let x = -1.0;
         return inverseSqrt(x);
     }
 
-    return edge_parallel_transport_data[first_true_col];
+    return edge_transport_data[first_true_col];
 }
 
 fn mod_tau(theta: f32) -> f32 {

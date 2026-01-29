@@ -1,4 +1,9 @@
-use std::{collections::HashSet, f32::consts::PI, f64::consts::TAU, sync::Arc};
+use std::{
+    collections::{HashSet, VecDeque},
+    f32::consts::PI,
+    f64::consts::TAU,
+    sync::Arc,
+};
 
 use bevy::{
     asset::RenderAssetUsages,
@@ -122,13 +127,18 @@ impl MeshGrid {
     pub fn edge_centroid_distance(&self) -> &[f32] {
         &self.0.edge_centroid_distance
     }
+
+    #[must_use]
+    pub fn edge_direction(&self) -> &[f32] {
+        &self.0.edge_direction
+    }
 }
 
 struct MeshGridInner {
     pub cell_adjacency: CsMatI<u32, u32>,
     pub cell_edge_adjacency: CsMatI<u32, u32>,
     pub cells: Vec<CellData>,
-    // pub direction: Vec<f32>,
+    pub edge_direction: Vec<f32>,
     pub edge_adjacency: CsMatI<u32, u32>,
     pub edge_cell_adjacency: CsMatI<u32, u32>,
     pub edge_centroid_distance: Vec<f32>,
@@ -229,11 +239,19 @@ impl MeshGridInner {
             edge_cell_adjacency.view(),
             &cells,
         );
+        let edge_direction = build_edge_direction_field(
+            edge_adjacency.view(),
+            edge_geometric_transport.view(),
+            edge_parallel_transport.view(),
+        );
+
+        dbg!(edge_direction[1]);
 
         Self {
             cell_adjacency,
             cell_edge_adjacency,
             cells,
+            edge_direction,
             edge_adjacency,
             edge_cell_adjacency,
             edge_centroid_distance,
@@ -763,6 +781,45 @@ fn build_edge_parallel_transport(
     edge_parallel_transport.to_csr()
 }
 
+fn build_edge_direction_field(
+    edge_adjacency: CsMatViewI<u32, u32>,
+    edge_geometric_transport: CsMatViewI<f32, u32>,
+    edge_parallel_transport: CsMatViewI<f32, u32>,
+) -> Vec<f32> {
+    let num_edges = edge_adjacency.rows();
+    let mut edge_direction = vec![0.0; num_edges];
+
+    let initial_direction = PI / 2.0;
+    let initial_edge = 0;
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    visited.insert(initial_edge);
+    queue.push_back((initial_edge, initial_direction));
+
+    while !queue.is_empty() {
+        let n = queue.len();
+        for _ in 0..n {
+            let (edge_idx, direction) = queue.pop_front().expect("to have node in queue");
+            edge_direction[edge_idx] = direction;
+            for neighbor_edge_idx in row_iter!(edge_adjacency, edge_idx) {
+                if visited.contains(&neighbor_edge_idx) {
+                    continue;
+                }
+                let new_direction = mod_tau(
+                    direction
+                        + *edge_parallel_transport
+                            .get(edge_idx, neighbor_edge_idx)
+                            .expect("there to be transport between edges"),
+                );
+                queue.push_back((neighbor_edge_idx, new_direction));
+                visited.insert(neighbor_edge_idx);
+            }
+        }
+    }
+
+    edge_direction
+}
+
 fn mod_tau(theta: f32) -> f32 {
     if (0.0..std::f32::consts::TAU).contains(&theta) {
         return theta;
@@ -958,7 +1015,8 @@ mod test {
     #[test]
     fn it_calculates_a_trivial_connection() {
         let grid = MeshGrid::new(100);
-        let singularities = &[(0, 1), (11, 1)];
+        // let singularities = &[(0, 1), (11, 1)];
+        let singularities = &[(0, 2)];
         let connection = MeshGridInner::calculate_trivial_connection(
             grid.cell_edge_adjacency().rows(),
             singularities,

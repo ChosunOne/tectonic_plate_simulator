@@ -18,7 +18,7 @@ pub struct MeshGridPlugin;
 
 impl Plugin for MeshGridPlugin {
     fn build(&self, app: &mut App) {
-        let grid = MeshGrid::new(100);
+        let grid = MeshGrid::new(50);
         app.insert_resource(grid.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(grid);
@@ -41,6 +41,7 @@ fn setup_edge_topology(
     let edge_lengths = grid.edge_lengths();
     let edge_centroid_distance = grid.edge_centroid_distance();
     let edge_parallel_transport = grid.edge_parallel_transport();
+    let edge_geometric_transport = grid.edge_geometric_transport();
 
     let cell_vertices = grid
         .cells()
@@ -157,25 +158,25 @@ fn setup_edge_topology(
         true,
     );
     builder.add_buffer_data(
-        edge_parallel_transport.indptr().as_slice().unwrap(),
+        edge_geometric_transport.indptr().as_slice().unwrap(),
         &render_device,
-        Some("edge_parallel_transport_row_indices"),
+        Some("edge_transport_row_indices"),
         visibility,
         usage,
         true,
     );
     builder.add_buffer_data(
-        edge_parallel_transport.indices(),
+        edge_geometric_transport.indices(),
         &render_device,
-        Some("edge_parallel_transport_col_indices"),
+        Some("edge_transport_col_indices"),
         visibility,
         usage,
         true,
     );
     builder.add_buffer_data(
-        edge_parallel_transport.data(),
+        edge_geometric_transport.data(),
         &render_device,
-        Some("edge_parallel_transport_data"),
+        Some("edge_transport_data"),
         visibility,
         usage,
         true,

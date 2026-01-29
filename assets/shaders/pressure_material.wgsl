@@ -41,10 +41,8 @@ fn vertex(vertex: Vertex) -> VertexPressureOutput {
     let max_deviation = max(abs(max_pressure - mid_pressure), abs(min_pressure - mid_pressure));
 
     if max_deviation > 0.0 {
-        let sign = sign(deviation);
-        let log_dev = sign * log(1.0 + abs(deviation)) / log(1.0 + max_deviation);
-        out.normalized_pressure = 0.5 + 0.5 * log_dev;
-    } else if max_deviation > 0.0 {
+        out.normalized_pressure = (pressure - min_pressure) / (max_pressure - min_pressure);
+    } else if max_deviation >= 0.0 {
         out.normalized_pressure = 0.5;
     } else {
         out.normalized_pressure = -1.0;
