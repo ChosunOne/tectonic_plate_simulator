@@ -1,8 +1,9 @@
 use std::f32::consts::TAU;
 
-use bevy::math::Vec3;
+use bevy::math::{Vec3, Vec3A};
+use sprs::CsMatViewI;
 
-use crate::{constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid};
+use crate::{constants::SPHERE_RADIUS, resources::mesh_grid::CellData};
 
 pub mod components;
 pub mod constants;
@@ -21,49 +22,45 @@ pub struct LocalFrame {
 
 impl LocalFrame {
     /// Create a local frame centered on a vertex.
-    /// - `axis_x` points toward the first adjacent vertex projected onto the tangent plane.
+    /// - `axis_x` points toward the first adjacent edge projected onto the tangent plane.
     /// - `axis_y` is perpendicular to `axis_x` in the tangent plane
     /// # Panics
     /// If there is no adjacent edge to the indicated vertex.
     #[must_use]
-    pub fn from_vertex(grid: &MeshGrid, vertex_idx: usize) -> Self {
-        let points = grid.sphere().raw_points();
+    pub fn from_vertex(
+        vertex_idx: usize,
+        points: &[Vec3A],
+        cells: &[CellData],
+        vertex_edge_adjacency: CsMatViewI<u32, u32>,
+        edge_vertex_adjacency: CsMatViewI<u32, u32>,
+        edge_cell_adjacency: CsMatViewI<u32, u32>,
+    ) -> Self {
         let origin = Vec3::from(SPHERE_RADIUS * points[vertex_idx]);
-        let normal = origin.normalize();
 
-        let edge_0_idx = *grid
-            .vertex_edge_adjacency()
+        let edge_0_idx = *vertex_edge_adjacency
             .get(vertex_idx, 0)
             .expect("vertex should have at least one adjacent edge")
             as usize;
-        let edge_0_verts = grid
-            .edge_vertex_adjacency()
-            .outer_view(edge_0_idx)
-            .expect("to have vertices for edge")
-            .iter()
-            .map(|(_, &x)| x as usize)
-            .collect::<Vec<_>>();
-        let v_other = if edge_0_verts[0] == vertex_idx {
-            edge_0_verts[1]
-        } else {
-            edge_0_verts[0]
-        };
-
-        let other_pos = Vec3::from(SPHERE_RADIUS * points[v_other]);
-        let toward_self = (origin - other_pos).normalize();
-        let axis_x = (toward_self - normal * toward_self.dot(normal)).normalize();
-        let axis_y = axis_x.cross(normal).normalize();
-
-        Self {
-            origin,
-            axis_x,
-            axis_y,
-        }
+        let mut frame = Self::from_edge(
+            edge_0_idx,
+            points,
+            cells,
+            edge_vertex_adjacency,
+            edge_cell_adjacency,
+        );
+        frame.origin = origin;
+        frame
     }
 
     #[must_use]
-    pub fn from_edge(grid: &MeshGrid, edge_idx: usize) -> Self {
-        let (v_low, v_high) = Self::get_edge_verts(grid, edge_idx);
+    pub fn from_edge(
+        edge_idx: usize,
+        points: &[Vec3A],
+        cells: &[CellData],
+        edge_vertex_adjacency: CsMatViewI<u32, u32>,
+        edge_cell_adjacency: CsMatViewI<u32, u32>,
+    ) -> Self {
+        let (v_low, v_high) = Self::get_edge_verts(edge_idx, points, edge_vertex_adjacency);
 
         let origin = (v_low + v_high) / 2.0;
         let edge_dir = (v_high - v_low).normalize();
@@ -71,14 +68,13 @@ impl LocalFrame {
         let surface_normal = origin.normalize();
         let perp = surface_normal.cross(edge_dir).normalize();
 
-        let edge_cells = grid
-            .edge_cell_adjacency()
+        let edge_cells = edge_cell_adjacency
             .outer_view(edge_idx)
             .expect("to have cells for edge")
             .iter()
             .map(|(_, &x)| x as usize)
             .collect::<Vec<_>>();
-        let primary_cell_center = grid.cells()[edge_cells[0]].center;
+        let primary_cell_center = cells[edge_cells[0]].center;
         let to_primary = primary_cell_center - origin;
         let axis_y = if to_primary.dot(perp) > 0.0 {
             perp
@@ -102,10 +98,12 @@ impl LocalFrame {
         self.origin + local_x * self.axis_x + local_y * self.axis_y
     }
 
-    fn get_edge_verts(grid: &MeshGrid, edge_idx: usize) -> (Vec3, Vec3) {
-        let points = grid.sphere().raw_points();
-        let edge_verts = grid
-            .edge_vertex_adjacency()
+    fn get_edge_verts(
+        edge_idx: usize,
+        points: &[Vec3A],
+        edge_vertex_adjacency: CsMatViewI<u32, u32>,
+    ) -> (Vec3, Vec3) {
+        let edge_verts = edge_vertex_adjacency
             .outer_view(edge_idx)
             .expect("to have vertices for edge")
             .iter()

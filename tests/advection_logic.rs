@@ -1,8 +1,6 @@
 use std::f32::consts::{PI, TAU};
 
-use tectonic_plate_simulator::{
-    LocalFrame, constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid,
-};
+use tectonic_plate_simulator::{constants::SPHERE_RADIUS, resources::mesh_grid::MeshGrid};
 
 fn get_transport_value(
     row_offsets: &[u32],
@@ -536,9 +534,6 @@ fn test_interior_interpolation_logic() {
     let primary_right_edge = 350;
     let secondary_left_edge = 355;
     let secondary_right_edge = 52;
-    let base_frame = LocalFrame::from_edge(&grid, base_edge);
-    let primary_left_frame = LocalFrame::from_edge(&grid, primary_left_edge);
-    let primary_right_frame = LocalFrame::from_edge(&grid, primary_right_edge);
 
     velocity[base_edge] = [90.79217529, 1.03493309];
     velocity[primary_left_edge] = [91.61075592, 1.95110750];
@@ -560,7 +555,7 @@ fn test_interior_interpolation_logic() {
     let primary_cell = grid.edge_cell_adjacency().data()[base_edge * 2];
     let secondary_cell = grid.edge_cell_adjacency().data()[base_edge * 2 + 1];
     let mut cell = primary_cell;
-    let mut angle_offset = PI;
+    let angle_offset = PI;
     let mut d = edge_lengths[base_edge] / 2.0;
     if mod_tau(edge_velocity[1] + angle_offset) > PI {
         dbg!("SECONDARY CELL");

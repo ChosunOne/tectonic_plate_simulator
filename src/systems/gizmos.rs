@@ -100,7 +100,13 @@ pub fn draw_velocity_arrows(
     let num_edges = grid.edge_cell_adjacency().rows();
 
     for edge_idx in 0..num_edges {
-        let frame = LocalFrame::from_edge(&grid, edge_idx);
+        let frame = LocalFrame::from_edge(
+            edge_idx,
+            grid.sphere().raw_points(),
+            grid.cells(),
+            grid.edge_vertex_adjacency(),
+            grid.edge_cell_adjacency(),
+        );
         let [magnitude, angle] = velocity[edge_idx];
 
         let is_selected = selected_edge.0 == Some(edge_idx);
@@ -142,7 +148,14 @@ pub fn draw_vertex_velocity_arrows(
 
     for vertex_idx in 0..num_vertices {
         let [mut magnitude, angle] = vertex_velocity[vertex_idx];
-        let frame = LocalFrame::from_vertex(&grid, vertex_idx);
+        let frame = LocalFrame::from_vertex(
+            vertex_idx,
+            grid.sphere().raw_points(),
+            grid.cells(),
+            grid.vertex_edge_adjacency(),
+            grid.edge_vertex_adjacency(),
+            grid.edge_cell_adjacency(),
+        );
 
         let color = if magnitude > 0.01 {
             Color::srgb(0.0, 0.0, 1.0)
@@ -184,7 +197,13 @@ pub fn draw_departure_gizmo(
 
     let base_edge_idx = info.base_edge as usize;
 
-    let frame = LocalFrame::from_edge(&grid, base_edge_idx);
+    let frame = LocalFrame::from_edge(
+        base_edge_idx,
+        grid.sphere().raw_points(),
+        grid.cells(),
+        grid.edge_vertex_adjacency(),
+        grid.edge_cell_adjacency(),
+    );
     let departure_pos = frame.polar_to_world_position(info.pos[0], info.pos[1]);
     let offset = departure_pos - frame.origin;
     let interpolated_velocity =

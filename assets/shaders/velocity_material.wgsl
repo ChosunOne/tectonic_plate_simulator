@@ -81,7 +81,7 @@ fn vertex(vertex: Vertex) -> VertexVelocityOutput {
     }
 
     let angle_offset = vertex_angle_offsets[vertex.vertex_index];
-    let global_angle = angle + angle_offset;
+    let global_angle = angle - angle_offset;
     out.velocity_x = cos(global_angle);
     out.velocity_y = sin(global_angle);
 

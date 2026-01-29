@@ -49,15 +49,16 @@ pub fn setup_velocity(
     let num_edges = grid.edge_cell_adjacency().rows();
     let mut velocity_data = Vec::<[f32; 2]>::with_capacity(num_edges);
     for i in 0..num_edges {
-        let frame = LocalFrame::from_edge(&grid, i);
+        let frame = LocalFrame::from_edge(
+            i,
+            grid.sphere().raw_points(),
+            grid.cells(),
+            grid.edge_vertex_adjacency(),
+            grid.edge_cell_adjacency(),
+        );
         let latitude = (frame.origin.y / frame.origin.length()).asin();
 
         let angle = frame.bearing_to_local_angle(PI / 2.0);
-        // let angle = if latitude.abs() > 0.35 {
-        //     frame.bearing_to_local_angle(PI / 2.0)
-        // } else {
-        //     frame.bearing_to_local_angle(-PI / 2.0)
-        // };
         let magnitude = 100.0 * latitude.cos();
 
         velocity_data.push([magnitude, angle]);

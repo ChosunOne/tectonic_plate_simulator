@@ -13,7 +13,7 @@ use hexasphere::shapes::IcoSphere;
 use sparse::solver::MinNormSolver;
 use sprs::{CsMat, CsMatI, CsMatView, CsMatViewI, TriMat, TriMatI};
 
-use crate::constants::SPHERE_RADIUS;
+use crate::{LocalFrame, constants::SPHERE_RADIUS};
 
 const MAX_EDGES_PER_VERTEX: usize = 6;
 
@@ -170,11 +170,6 @@ impl MeshGridInner {
         let vertex_cell_adjacency = build_vertex_cell_adjacency(&sphere);
         let vertex_edge_adjacency =
             build_vertex_edge_adjacency(&sphere, edge_vertex_adjacency.view());
-        let vertex_angle_offsets = build_vertex_angle_offsets(
-            points,
-            vertex_edge_adjacency.view(),
-            edge_vertex_adjacency.view(),
-        );
         let edge_lengths = build_edge_lenths(
             edge_cell_adjacency.view(),
             edge_vertex_adjacency.view(),
@@ -226,6 +221,13 @@ impl MeshGridInner {
             cell_edge_adjacency.view(),
             edge_cell_adjacency.view(),
             edge_geometric_transport.view(),
+        );
+        let vertex_angle_offsets = build_vertex_angle_offsets(
+            points,
+            vertex_edge_adjacency.view(),
+            edge_vertex_adjacency.view(),
+            edge_cell_adjacency.view(),
+            &cells,
         );
 
         Self {
@@ -794,86 +796,25 @@ fn build_vertex_angle_offsets(
     points: &[Vec3A],
     vertex_edge_adjacency: CsMatViewI<u32, u32>,
     edge_vertex_adjacency: CsMatViewI<u32, u32>,
+    edge_cell_adjacency: CsMatViewI<u32, u32>,
+    cells: &[CellData],
 ) -> Vec<f32> {
     let num_vertices = points.len();
     let mut vertex_angle_offsets = vec![0.0f32; num_vertices];
-    let mut pole_vertices = Vec::new();
     for vertex_idx in 0..num_vertices {
-        let vertex_pos: Vec3 = points[vertex_idx].into();
-        let vertex_normal = vertex_pos.normalize();
-
-        let is_pole = vertex_normal.x.abs() < 1e-7
-            && vertex_normal.z.abs() < 1e-7
-            && (vertex_normal.y.abs() - SPHERE_RADIUS).abs() < 1e-7;
-
-        if is_pole {
-            pole_vertices.push(vertex_idx);
-            continue;
-        }
-
-        let edge_0_idx = row_iter!(vertex_edge_adjacency, vertex_idx)
-            .next()
-            .expect("there to be an edge");
-
-        let edge_0_verts = row_iter!(edge_vertex_adjacency, edge_0_idx).collect::<Vec<_>>();
-        let v_other = if edge_0_verts[0] as usize == vertex_idx {
-            edge_0_verts[1] as usize
-        } else {
-            edge_0_verts[0] as usize
-        };
-        let other_pos: Vec3 = points[v_other].into();
-        let edge_dir = (other_pos - vertex_pos).normalize();
-
-        let edge_dir_tangent = (edge_dir - vertex_normal * edge_dir.dot(vertex_normal)).normalize();
-
-        let west_raw = vertex_normal.cross(Vec3::Y);
-        if west_raw.length() < 0.05 * SPHERE_RADIUS {
-            pole_vertices.push(vertex_idx);
-            continue;
-        }
-
-        let west = west_raw.normalize();
-        let north = west.cross(vertex_normal).normalize();
-        let angle_offset = edge_dir_tangent
-            .dot(north)
-            .atan2(edge_dir_tangent.dot(west));
+        let frame = LocalFrame::from_vertex(
+            vertex_idx,
+            points,
+            cells,
+            vertex_edge_adjacency,
+            edge_vertex_adjacency,
+            edge_cell_adjacency,
+        );
+        let angle_offset = frame.bearing_to_local_angle(PI / 2.0);
 
         vertex_angle_offsets[vertex_idx] = angle_offset;
     }
 
-    for &pole_idx in &pole_vertices {
-        let pole_pos: Vec3 = points[pole_idx].into();
-        let pole_normal = pole_pos.normalize();
-
-        let edge_0_idx = row_iter!(vertex_edge_adjacency, pole_idx)
-            .next()
-            .expect("to have pole vertex edge");
-        let edge_0_verts = row_iter!(edge_vertex_adjacency, edge_0_idx).collect::<Vec<_>>();
-        let neighbor_idx = if edge_0_verts[0] as usize == pole_idx {
-            edge_0_verts[1] as usize
-        } else {
-            edge_0_verts[0] as usize
-        };
-
-        let neighbor_pos: Vec3 = points[neighbor_idx].into();
-        let neighbor_normal = neighbor_pos.normalize();
-        let neighbor_west = neighbor_normal.cross(Vec3::Y).normalize();
-        let neighbor_north = neighbor_west.cross(neighbor_normal).normalize();
-
-        let edge_dir = (neighbor_pos - pole_pos).normalize();
-        let edge_dir_tangent = (edge_dir - pole_normal * edge_dir.dot(pole_normal)).normalize();
-
-        let neighbor_west_at_pole =
-            (neighbor_west - pole_normal * neighbor_west.dot(pole_normal)).normalize();
-        let neighbor_north_at_pole =
-            (neighbor_north - pole_normal * neighbor_north.dot(pole_normal)).normalize();
-
-        let angle_offset = edge_dir_tangent
-            .dot(neighbor_north_at_pole)
-            .atan2(edge_dir_tangent.dot(neighbor_west_at_pole));
-
-        vertex_angle_offsets[pole_idx] = angle_offset;
-    }
     vertex_angle_offsets
 }
 
