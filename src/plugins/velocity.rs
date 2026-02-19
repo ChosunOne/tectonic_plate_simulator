@@ -52,7 +52,7 @@ pub fn setup_velocity(
     for i in 0..num_edges {
         let frame = LocalFrame::from_edge(
             i,
-            grid.sphere().raw_points(),
+            grid.points(),
             grid.cells(),
             grid.edge_vertex_adjacency(),
             grid.edge_cell_adjacency(),

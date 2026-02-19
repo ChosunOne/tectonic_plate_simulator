@@ -14,13 +14,14 @@ use bevy::{
     render::extract_resource::ExtractResource,
 };
 
-use hexasphere::shapes::IcoSphere;
 use sparse::solver::MinNormSolver;
 use sprs::{CsMat, CsMatI, CsMatView, CsMatViewI, TriMat, TriMatI};
+use stripack::DelaunayTriangulation;
 
 use crate::{LocalFrame, constants::SPHERE_RADIUS};
 
-const MAX_EDGES_PER_VERTEX: usize = 6;
+const MAX_EDGES_PER_VERTEX: usize = 12;
+const GOLDEN_RATIO: f32 = 1.618_034;
 
 /// Creates an iterator over the CSR matrix for a given row
 macro_rules! row_iter {
@@ -44,8 +45,8 @@ pub struct MeshGrid(Arc<MeshGridInner>);
 
 impl MeshGrid {
     #[must_use]
-    pub fn new(subdivisions: usize) -> Self {
-        Self(Arc::new(MeshGridInner::new(subdivisions)))
+    pub fn new(n: usize) -> Self {
+        Self(Arc::new(MeshGridInner::new(n)))
     }
 
     #[must_use]
@@ -54,8 +55,13 @@ impl MeshGrid {
     }
 
     #[must_use]
-    pub fn sphere(&self) -> &IcoSphere<Vec3A> {
-        &self.0.sphere
+    pub fn points(&self) -> &[Vec3A] {
+        &self.0.points
+    }
+
+    #[must_use]
+    pub fn indices(&self) -> &[u32] {
+        &self.0.indices
     }
 
     #[must_use]
@@ -147,10 +153,12 @@ struct MeshGridInner {
     pub edge_lengths: Vec<f32>,
     pub edge_parallel_transport: CsMatI<f32, u32>,
     pub edge_vertex_adjacency: CsMatI<u32, u32>,
-    pub sphere: IcoSphere<Vec3A>,
+    pub points: Vec<Vec3A>,
+    pub indices: Vec<u32>,
     pub vertex_angle_offsets: Vec<f32>,
     pub vertex_cell_adjacency: CsMatI<u32, u32>,
     pub vertex_edge_adjacency: CsMatI<u32, u32>,
+    pub vertex_adjacency: CsMatI<u32, u32>,
 }
 
 impl ExtractResource for MeshGrid {
@@ -164,26 +172,49 @@ impl ExtractResource for MeshGrid {
 impl MeshGridInner {
     #[must_use]
     #[allow(clippy::too_many_lines)]
-    pub fn new(subdivisions: usize) -> Self {
-        let sphere = IcoSphere::new(subdivisions, |v| v * SPHERE_RADIUS);
-        let points = sphere.raw_points();
-        let indices = sphere.get_all_indices();
+    pub fn new(n: usize) -> Self {
+        let raw_points = offset_fibonacci_sphere(n);
+        let mut x = Vec::with_capacity(n);
+        let mut y = Vec::with_capacity(n);
+        let mut z = Vec::with_capacity(n);
+
+        for p in raw_points {
+            let v = normalize(p.x as f64, p.y as f64, p.z as f64);
+            x.push(v[0]);
+            y.push(v[1]);
+            z.push(v[2]);
+        }
+
+        let triangulation = DelaunayTriangulation::new(x, y, z).expect("to make a triangulation");
+        let mesh_data = triangulation.triangle_mesh().expect("to get triangulation");
+        let mut points = Vec::with_capacity(n);
+        for pos in mesh_data.positions {
+            points.push(Vec3A::new(pos[0] as f32, pos[1] as f32, pos[2] as f32) * SPHERE_RADIUS);
+        }
+        let mut indices = Vec::with_capacity(n);
+        for idx in mesh_data.indices {
+            indices.push(idx as u32);
+        }
+
         let num_triangles = indices.len() / 3;
 
-        let cell_edge_adjacency = build_cell_edge_adjacency(&sphere);
-        let edge_cell_adjacency = build_edge_cell_adjacency(&sphere);
+        let cell_edge_adjacency = build_cell_edge_adjacency(&indices);
+        let edge_cell_adjacency = build_edge_cell_adjacency(&indices);
         let edge_adjacency =
             build_edge_adjacency(edge_cell_adjacency.view(), cell_edge_adjacency.view());
         let cell_adjacency =
             build_cell_adjacency(cell_edge_adjacency.view(), edge_cell_adjacency.view());
-        let edge_vertex_adjacency = build_edge_vertex_adjacency(&sphere);
-        let vertex_cell_adjacency = build_vertex_cell_adjacency(&sphere);
+        let edge_vertex_adjacency = build_edge_vertex_adjacency(&indices);
+        let vertex_cell_adjacency = build_vertex_cell_adjacency(&points, &indices);
         let vertex_edge_adjacency =
-            build_vertex_edge_adjacency(&sphere, edge_vertex_adjacency.view());
+            build_vertex_edge_adjacency(&points, edge_vertex_adjacency.view());
+        let vertex_adjacency =
+            build_vertex_adjacency(vertex_edge_adjacency.view(), edge_vertex_adjacency.view());
+
         let edge_lengths = build_edge_lenths(
             edge_cell_adjacency.view(),
             edge_vertex_adjacency.view(),
-            sphere.raw_points(),
+            &points,
         );
         let edge_centroid_distance = build_edge_centroid_distance(
             cell_edge_adjacency.view(),
@@ -198,9 +229,9 @@ impl MeshGridInner {
             let v1 = indices[base + 1];
             let v2 = indices[base + 2];
 
-            let p0: Vec3 = (SPHERE_RADIUS * points[v0 as usize]).into();
-            let p1: Vec3 = (SPHERE_RADIUS * points[v1 as usize]).into();
-            let p2: Vec3 = (SPHERE_RADIUS * points[v2 as usize]).into();
+            let p0 = Vec3::from(points[v0 as usize]);
+            let p1 = Vec3::from(points[v1 as usize]);
+            let p2 = Vec3::from(points[v2 as usize]);
 
             let center = (p0 + p1 + p2) / 3.0;
 
@@ -223,7 +254,7 @@ impl MeshGridInner {
             vertex_edge_adjacency.view(),
             edge_cell_adjacency.view(),
             edge_vertex_adjacency.view(),
-            &sphere,
+            &points,
         );
 
         let edge_parallel_transport = build_edge_parallel_transport(
@@ -233,7 +264,7 @@ impl MeshGridInner {
             edge_geometric_transport.view(),
         );
         let vertex_angle_offsets = build_vertex_angle_offsets(
-            points,
+            &points,
             vertex_edge_adjacency.view(),
             edge_vertex_adjacency.view(),
             edge_cell_adjacency.view(),
@@ -244,8 +275,6 @@ impl MeshGridInner {
             edge_geometric_transport.view(),
             edge_parallel_transport.view(),
         );
-
-        dbg!(edge_direction[1]);
 
         Self {
             cell_adjacency,
@@ -260,22 +289,21 @@ impl MeshGridInner {
             edge_lengths,
             edge_parallel_transport,
             edge_vertex_adjacency,
-            sphere,
+            indices,
+            points,
             vertex_angle_offsets,
             vertex_cell_adjacency,
             vertex_edge_adjacency,
+            vertex_adjacency,
         }
     }
 
     #[must_use]
     pub fn mesh(&self) -> Mesh {
-        let points = self.sphere.raw_points();
-        let indices = self.sphere.get_all_indices();
+        let points = &self.points;
+        let indices = &self.indices;
 
-        let positions = points
-            .iter()
-            .map(|&p| (SPHERE_RADIUS * p).into())
-            .collect::<Vec<[f32; 3]>>();
+        let positions = points.iter().map(|&p| p.into()).collect::<Vec<[f32; 3]>>();
         let normals = points
             .iter()
             .map(|&p| p.normalize().into())
@@ -285,7 +313,7 @@ impl MeshGridInner {
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-        mesh.insert_indices(Indices::U32(indices));
+        mesh.insert_indices(Indices::U32(indices.clone()));
         mesh
     }
 
@@ -295,7 +323,7 @@ impl MeshGridInner {
         vertex_edge_adjacency: CsMatViewI<u32, u32>,
         edge_cell_adjacency: CsMatViewI<u32, u32>,
         edge_vertex_adjacency: CsMatViewI<u32, u32>,
-        sphere: &IcoSphere<Vec3A>,
+        points: &[Vec3A],
     ) -> Vec<f32> {
         let num_vertices = vertex_edge_adjacency.rows();
         let num_edges = edge_cell_adjacency.rows();
@@ -306,7 +334,7 @@ impl MeshGridInner {
         );
         let d0 = Self::build_d0(vertex_edge_adjacency, edge_cell_adjacency);
         let mut curvature = Self::calculate_gaussian_curvature(
-            sphere,
+            points,
             vertex_edge_adjacency,
             edge_vertex_adjacency,
         );
@@ -341,7 +369,7 @@ impl MeshGridInner {
     }
 
     fn calculate_gaussian_curvature(
-        sphere: &IcoSphere<Vec3A>,
+        points: &[Vec3A],
         vertex_edge_adjacency: CsMatViewI<u32, u32>,
         edge_vertex_adjacency: CsMatViewI<u32, u32>,
     ) -> Vec<f64> {
@@ -361,7 +389,7 @@ impl MeshGridInner {
                     }
                 };
 
-                let dir = sphere.raw_points()[other_vertex] - sphere.raw_points()[i];
+                let dir = points[other_vertex] - points[i];
                 let dir_64 = DVec3::from(Vec3::from(dir));
 
                 if e_i != 0 {
@@ -410,9 +438,8 @@ impl MeshGridInner {
     }
 }
 
-fn build_cell_edge_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
-    let mesh_indices = sphere.get_all_indices();
-    let num_cells = mesh_indices.len() / 3;
+fn build_cell_edge_adjacency(indices: &[u32]) -> CsMatI<u32, u32> {
+    let num_cells = indices.len() / 3;
 
     let mut cell_edge_adjacency = TriMatI::<u32, u32>::new((num_cells, 3));
 
@@ -420,11 +447,7 @@ fn build_cell_edge_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
     let mut edge_map = HashMap::new();
     for cell_idx in 0..num_cells {
         let base = cell_idx * 3;
-        let cell_verts = [
-            mesh_indices[base],
-            mesh_indices[base + 1],
-            mesh_indices[base + 2],
-        ];
+        let cell_verts = [indices[base], indices[base + 1], indices[base + 2]];
 
         for local_edge_idx in 0..3 {
             let v0 = cell_verts[local_edge_idx];
@@ -452,8 +475,7 @@ fn build_cell_adjacency(
     let mut cell_adjacency = TriMatI::<u32, u32>::new((num_cells, 3));
 
     for (cell_idx, edges) in cell_edges.outer_iterator().enumerate() {
-        let mut count = 0;
-        for (_, &edge_idx) in edges.iter() {
+        for (count, (_, &edge_idx)) in edges.iter().enumerate() {
             let cells = row_iter!(edge_cells, edge_idx as usize).collect::<Vec<_>>();
             let neighbor = if cells[0] as usize == cell_idx {
                 cells[1]
@@ -461,16 +483,14 @@ fn build_cell_adjacency(
                 cells[0]
             };
             cell_adjacency.add_triplet(cell_idx, count, neighbor as u32);
-            count += 1;
         }
     }
 
     cell_adjacency.to_csr()
 }
 
-fn build_edge_vertex_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
-    let mesh_indices = sphere.get_all_indices();
-    let num_cells = mesh_indices.len() / 3;
+fn build_edge_vertex_adjacency(indices: &[u32]) -> CsMatI<u32, u32> {
+    let num_cells = indices.len() / 3;
     let num_edges = 3 * num_cells / 2;
 
     let mut edge_vertex_adjacency = TriMatI::<u32, u32>::new((num_edges, 2));
@@ -480,11 +500,7 @@ fn build_edge_vertex_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
     let mut edge_map = HashMap::new();
     for cell_idx in 0..num_cells {
         let base = cell_idx * 3;
-        let cell_verts = [
-            mesh_indices[base],
-            mesh_indices[base + 1],
-            mesh_indices[base + 2],
-        ];
+        let cell_verts = [indices[base], indices[base + 1], indices[base + 2]];
 
         for local_edge in 0..3 {
             let v0 = cell_verts[local_edge];
@@ -509,9 +525,8 @@ fn build_edge_vertex_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
     edge_vertex_adjacency.to_csr()
 }
 
-fn build_edge_cell_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
-    let mesh_indices = sphere.get_all_indices();
-    let num_cells = mesh_indices.len() / 3;
+fn build_edge_cell_adjacency(indices: &[u32]) -> CsMatI<u32, u32> {
+    let num_cells = indices.len() / 3;
     let num_edges = 3 * num_cells / 2;
 
     let mut edge_cell_adjacency = TriMatI::<u32, u32>::new((num_edges, 2));
@@ -521,11 +536,7 @@ fn build_edge_cell_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
 
     for cell_idx in 0..num_cells {
         let base = cell_idx * 3;
-        let cell_verts = [
-            mesh_indices[base],
-            mesh_indices[base + 1],
-            mesh_indices[base + 2],
-        ];
+        let cell_verts = [indices[base], indices[base + 1], indices[base + 2]];
 
         for local_edge in 0..3 {
             let v0 = cell_verts[local_edge];
@@ -549,19 +560,18 @@ fn build_edge_cell_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
     edge_cell_adjacency.to_csr()
 }
 
-fn build_vertex_cell_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
-    let num_vertices = sphere.raw_points().len();
-    let mesh_indices = sphere.get_all_indices();
-    let num_cells = mesh_indices.len() / 3;
+fn build_vertex_cell_adjacency(points: &[Vec3A], indices: &[u32]) -> CsMatI<u32, u32> {
+    let num_vertices = points.len();
+    let num_cells = indices.len() / 3;
 
     let mut vertex_cell_adjacency = TriMatI::<u32, u32>::new((num_vertices, num_cells));
     let mut inserted = HashSet::new();
 
     for cell_idx in 0..num_cells {
         let base = cell_idx * 3;
-        let v0 = mesh_indices[base];
-        let v1 = mesh_indices[base + 1];
-        let v2 = mesh_indices[base + 2];
+        let v0 = indices[base];
+        let v1 = indices[base + 1];
+        let v2 = indices[base + 2];
 
         if !inserted.contains(&(v0, cell_idx)) {
             vertex_cell_adjacency.add_triplet(v0 as usize, cell_idx, cell_idx as u32);
@@ -580,11 +590,10 @@ fn build_vertex_cell_adjacency<T>(sphere: &IcoSphere<T>) -> CsMatI<u32, u32> {
     vertex_cell_adjacency.to_csr()
 }
 
-fn build_vertex_edge_adjacency<T>(
-    sphere: &IcoSphere<T>,
+fn build_vertex_edge_adjacency(
+    points: &[Vec3A],
     edge_vertices: CsMatViewI<u32, u32>,
 ) -> CsMatI<u32, u32> {
-    let points = sphere.raw_points();
     let num_vertices = points.len();
     let num_edges = edge_vertices.rows();
 
@@ -670,6 +679,28 @@ fn build_edge_adjacency(
     }
 
     edge_adjacency.to_csr()
+}
+
+fn build_vertex_adjacency(
+    vertex_edge_adjacency: CsMatViewI<u32, u32>,
+    edge_vertex_adjacency: CsMatViewI<u32, u32>,
+) -> CsMatI<u32, u32> {
+    let num_vertices = vertex_edge_adjacency.rows();
+    let mut vertex_adjacency = TriMatI::<u32, u32>::new((num_vertices, num_vertices));
+
+    for vertex_idx in 0..num_vertices {
+        for edge_idx in row_iter!(vertex_edge_adjacency, vertex_idx) {
+            let edge_verts = row_iter!(edge_vertex_adjacency, edge_idx).collect::<Vec<_>>();
+            let other_vertex_idx = if edge_verts[0] == vertex_idx {
+                edge_verts[1]
+            } else {
+                edge_verts[0]
+            };
+            vertex_adjacency.add_triplet(vertex_idx, other_vertex_idx, other_vertex_idx as u32);
+        }
+    }
+
+    vertex_adjacency.to_csr()
 }
 
 fn build_edge_geometric_transport(
@@ -884,8 +915,8 @@ fn build_edge_lenths(
     for (i, length) in edge_lengths.iter_mut().enumerate() {
         let left_vertex_idx = edge_vertex_adjacency.data()[i * 2] as usize;
         let right_vertex_idx = edge_vertex_adjacency.data()[i * 2 + 1] as usize;
-        let left_vertex = points[left_vertex_idx] * SPHERE_RADIUS;
-        let right_vertex = points[right_vertex_idx] * SPHERE_RADIUS;
+        let left_vertex = points[left_vertex_idx];
+        let right_vertex = points[right_vertex_idx];
         *length = left_vertex.distance(right_vertex);
     }
     edge_lengths
@@ -922,6 +953,37 @@ fn cell_area(edges: &[usize], edge_lengths: &[f32]) -> f32 {
 
     let s = (a + b + c) / 2.0;
     (s * (s - a) * (s - b) * (s - c)).sqrt()
+}
+
+fn offset_fibonacci_sphere(n: usize) -> Vec<Vec3A> {
+    let epsilon = 0.36;
+    let denom = (n as f32) - 1.0 + 2.0 * epsilon;
+
+    let mut points = Vec::with_capacity(n);
+
+    for i in 0..n - 2 {
+        let i_f = i as f32;
+        let theta = 2.0 * PI * i_f / GOLDEN_RATIO;
+        let phi = (1.0 - 2.0 * (i_f + epsilon) / denom)
+            .clamp(-1.0, 1.0)
+            .acos();
+
+        let x = theta.cos() * phi.sin();
+        let z = theta.sin() * phi.sin();
+        let y = phi.cos();
+
+        points.push(Vec3A::new(x, y, z).normalize());
+    }
+
+    points.push(Vec3A::new(0.0, 1.0, 0.0));
+    points.push(Vec3A::new(0.0, -1.0, 0.0));
+
+    points
+}
+
+fn normalize(x: f64, y: f64, z: f64) -> [f64; 3] {
+    let nrm = (x.powi(2) + y.powi(2) + z.powi(2)).sqrt();
+    [x / nrm, y / nrm, z / nrm]
 }
 
 #[cfg(test)]
@@ -985,7 +1047,7 @@ mod test {
     fn it_calculates_curvature() {
         let grid = MeshGrid::new(20);
         let curvature = MeshGridInner::calculate_gaussian_curvature(
-            grid.sphere(),
+            grid.points(),
             grid.vertex_edge_adjacency(),
             grid.edge_vertex_adjacency(),
         );
@@ -1023,11 +1085,11 @@ mod test {
             grid.vertex_edge_adjacency(),
             grid.edge_cell_adjacency(),
             grid.edge_vertex_adjacency(),
-            grid.sphere(),
+            grid.points(),
         );
 
         let mut curvature = MeshGridInner::calculate_gaussian_curvature(
-            grid.sphere(),
+            grid.points(),
             grid.vertex_edge_adjacency(),
             grid.edge_vertex_adjacency(),
         );

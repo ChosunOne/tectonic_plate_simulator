@@ -4,7 +4,7 @@ use tectonic_plate_simulator::resources::mesh_grid::MeshGrid;
 fn vertex_edge_adjacency_exists() {
     let grid = MeshGrid::new(20);
     let vertex_edge = grid.vertex_edge_adjacency();
-    let num_vertices = grid.sphere().raw_points().len();
+    let num_vertices = grid.points().len();
 
     assert!(vertex_edge.rows() > 0);
 

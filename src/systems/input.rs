@@ -208,7 +208,7 @@ pub fn handle_selection_input(
 
     let hit_point = ray.origin + t * ray.direction.as_vec3();
 
-    let points = grid.sphere().raw_points();
+    let points = grid.points();
     let edge_vertex_adjacency = grid.edge_vertex_adjacency();
     let num_edges = edge_vertex_adjacency.rows();
 
@@ -222,8 +222,8 @@ pub fn handle_selection_input(
             .iter()
             .map(|(_, &x)| x as usize)
             .collect::<Vec<_>>();
-        let v_lower_pos = points[edge_verts[0]] * SPHERE_RADIUS;
-        let v_higher_pos = points[edge_verts[1]] * SPHERE_RADIUS;
+        let v_lower_pos = points[edge_verts[0]];
+        let v_higher_pos = points[edge_verts[1]];
 
         let midpoint: Vec3 = ((v_lower_pos + v_higher_pos) / 2.0).into();
         let distance_sq = (hit_point - midpoint).length_squared();

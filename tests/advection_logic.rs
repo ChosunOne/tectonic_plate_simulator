@@ -547,8 +547,8 @@ fn test_interior_interpolation_logic() {
     for (i, length) in edge_lengths.iter_mut().enumerate() {
         let left_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2] as usize;
         let right_vertex_idx = grid.edge_vertex_adjacency().data()[i * 2 + 1] as usize;
-        let left_vertex = grid.sphere().raw_points()[left_vertex_idx] * SPHERE_RADIUS;
-        let right_vertex = grid.sphere().raw_points()[right_vertex_idx] * SPHERE_RADIUS;
+        let left_vertex = grid.points()[left_vertex_idx];
+        let right_vertex = grid.points()[right_vertex_idx];
         *length = left_vertex.distance(right_vertex);
     }
 

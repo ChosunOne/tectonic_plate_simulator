@@ -17,8 +17,8 @@ pub fn draw_triangle_grid(
     if !visibility.triangle_grid {
         return;
     }
-    let points = grid.sphere().raw_points();
-    let indices = grid.sphere().get_all_indices();
+    let points = grid.points();
+    let indices = grid.indices();
 
     for triangle in indices.chunks(3) {
         let (a, b, c) = (
@@ -27,9 +27,9 @@ pub fn draw_triangle_grid(
             triangle[2] as usize,
         );
 
-        let pa = SPHERE_RADIUS * points[a];
-        let pb = SPHERE_RADIUS * points[b];
-        let pc = SPHERE_RADIUS * points[c];
+        let pa = points[a];
+        let pb = points[b];
+        let pc = points[c];
 
         gizmos.line(pa.into(), pb.into(), Color::srgb(0.0, 1.0, 0.5));
         gizmos.line(pb.into(), pc.into(), Color::srgb(0.0, 1.0, 0.5));
@@ -45,7 +45,7 @@ pub fn draw_triangle_grid_centers(
     if !visibility.triangle_centers {
         return;
     }
-    let indices = grid.sphere().get_all_indices();
+    let indices = grid.indices();
     for triangle_idx in 0..indices.len() / 3 {
         let center = grid.cells()[triangle_idx].center;
         gizmos.cross(center, 5.00, Color::srgb(1.0, 0.0, 0.0));
@@ -102,7 +102,7 @@ pub fn draw_velocity_arrows(
     for edge_idx in 0..num_edges {
         let frame = LocalFrame::from_edge(
             edge_idx,
-            grid.sphere().raw_points(),
+            grid.points(),
             grid.cells(),
             grid.edge_vertex_adjacency(),
             grid.edge_cell_adjacency(),
@@ -150,7 +150,7 @@ pub fn draw_vertex_velocity_arrows(
         let [mut magnitude, angle] = vertex_velocity[vertex_idx];
         let frame = LocalFrame::from_vertex(
             vertex_idx,
-            grid.sphere().raw_points(),
+            grid.points(),
             grid.cells(),
             grid.vertex_edge_adjacency(),
             grid.edge_vertex_adjacency(),
@@ -199,7 +199,7 @@ pub fn draw_departure_gizmo(
 
     let frame = LocalFrame::from_edge(
         base_edge_idx,
-        grid.sphere().raw_points(),
+        grid.points(),
         grid.cells(),
         grid.edge_vertex_adjacency(),
         grid.edge_cell_adjacency(),

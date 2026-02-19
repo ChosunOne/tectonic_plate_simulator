@@ -109,8 +109,8 @@ impl LocalFrame {
             .iter()
             .map(|(_, &x)| x as usize)
             .collect::<Vec<_>>();
-        let v_low = Vec3::from(points[edge_verts[0]] * SPHERE_RADIUS);
-        let v_high = Vec3::from(points[edge_verts[1]] * SPHERE_RADIUS);
+        let v_low = Vec3::from(points[edge_verts[0]]);
+        let v_high = Vec3::from(points[edge_verts[1]]);
 
         (v_low, v_high)
     }

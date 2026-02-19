@@ -3,7 +3,7 @@ use tectonic_plate_simulator::resources::mesh_grid::MeshGrid;
 #[test]
 fn test_edge_count_euler_formula() {
     let grid = MeshGrid::new(20);
-    let num_vertices = grid.sphere().raw_points().len();
+    let num_vertices = grid.points().len();
     let num_faces = grid.cells().len();
     let num_edges = grid.edge_cell_adjacency().rows();
 
