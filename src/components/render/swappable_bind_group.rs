@@ -14,19 +14,19 @@ use bytemuck::{AnyBitPattern, NoUninit};
 
 use crate::render::double_buffer::{DoubleBuffer, DoubleBufferHandle};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BufferEntry {
     Static {
-        buffer_index: usize,
+        index: usize,
         visibility: ShaderStages,
         read_only: bool,
     },
     Double {
-        double_buffer_index: usize,
+        index: usize,
         visibility: ShaderStages,
     },
     Uniform {
-        buffer_index: usize,
+        index: usize,
         visibility: ShaderStages,
     },
 }
@@ -164,7 +164,7 @@ impl BindGroupBuilder {
         let index = self.buffers.len();
         self.buffers.push(buffer);
         self.entries.push(BufferEntry::Static {
-            buffer_index: index,
+            index,
             visibility,
             read_only,
         });
@@ -178,10 +178,7 @@ impl BindGroupBuilder {
     ) -> &mut Self {
         let index = self.double_buffers.len();
         self.double_buffers.push(Box::new(buffer));
-        self.entries.push(BufferEntry::Double {
-            double_buffer_index: index,
-            visibility,
-        });
+        self.entries.push(BufferEntry::Double { index, visibility });
         self
     }
 
@@ -236,7 +233,7 @@ impl BindGroupBuilder {
         let index = self.double_buffers.len();
         self.double_buffers.push(Box::new(double_buffer));
         self.entries.push(BufferEntry::Double {
-            double_buffer_index: index,
+            index,
             visibility: ShaderStages::FRAGMENT,
         });
         self
@@ -245,10 +242,8 @@ impl BindGroupBuilder {
     pub fn add_uniform(&mut self, buffer: Buffer, visibility: ShaderStages) -> &mut Self {
         let index = self.buffers.len();
         self.buffers.push(buffer);
-        self.entries.push(BufferEntry::Uniform {
-            buffer_index: index,
-            visibility,
-        });
+        self.entries
+            .push(BufferEntry::Uniform { index, visibility });
         self
     }
 
@@ -268,11 +263,8 @@ impl BindGroupBuilder {
 
         for entry in &self.entries {
             match entry {
-                BufferEntry::Double {
-                    double_buffer_index,
-                    ..
-                } => {
-                    let db = &self.double_buffers[*double_buffer_index];
+                BufferEntry::Double { index, .. } => {
+                    let db = &self.double_buffers[*index];
                     let (read_buf, write_buf) = if swapped {
                         (db.write(), db.read())
                     } else {
@@ -289,9 +281,8 @@ impl BindGroupBuilder {
                     });
                     binding_index += 1;
                 }
-                BufferEntry::Static { buffer_index, .. }
-                | BufferEntry::Uniform { buffer_index, .. } => {
-                    let buffer = &self.buffers[*buffer_index];
+                BufferEntry::Static { index, .. } | BufferEntry::Uniform { index, .. } => {
+                    let buffer = &self.buffers[*index];
                     entries.push(BindGroupEntry {
                         binding: binding_index,
                         resource: buffer.as_entire_binding(),
