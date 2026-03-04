@@ -14,9 +14,10 @@ use bytemuck::{AnyBitPattern, NoUninit};
 
 use crate::render::double_buffer::{DoubleBuffer, DoubleBufferHandle};
 
+#[derive(Debug)]
 pub enum BufferEntry {
     Static {
-        buffer: Buffer,
+        buffer_index: usize,
         visibility: ShaderStages,
         read_only: bool,
     },
@@ -25,7 +26,7 @@ pub enum BufferEntry {
         visibility: ShaderStages,
     },
     Uniform {
-        buffer: Buffer,
+        buffer_index: usize,
         visibility: ShaderStages,
     },
 }
@@ -33,6 +34,7 @@ pub enum BufferEntry {
 #[derive(Default)]
 pub struct BindGroupBuilder {
     entries: Vec<BufferEntry>,
+    buffers: Vec<Buffer>,
     double_buffers: Vec<Box<dyn DoubleBufferHandle + Send + Sync>>,
 }
 
@@ -46,16 +48,14 @@ impl BindGroupBuilder {
     pub fn build(self, render_device: &RenderDevice, label: &str) -> SwappableBindGroup {
         let mut layout_entries = Vec::new();
         let mut binding_index = 0u32;
-        let mut buffers = vec![];
 
         for entry in &self.entries {
             match entry {
                 BufferEntry::Static {
                     visibility,
                     read_only,
-                    buffer,
+                    ..
                 } => {
-                    buffers.push(buffer.clone());
                     layout_entries.push(BindGroupLayoutEntry {
                         binding: binding_index,
                         visibility: *visibility,
@@ -97,8 +97,7 @@ impl BindGroupBuilder {
                     });
                     binding_index += 1;
                 }
-                BufferEntry::Uniform { buffer, visibility } => {
-                    buffers.push(buffer.clone());
+                BufferEntry::Uniform { visibility, .. } => {
                     layout_entries.push(BindGroupLayoutEntry {
                         binding: binding_index,
                         visibility: *visibility,
@@ -130,7 +129,7 @@ impl BindGroupBuilder {
         };
 
         SwappableBindGroup {
-            buffers,
+            buffers: self.buffers,
             layout,
             layout_descriptor,
             bind_groups,
@@ -162,8 +161,10 @@ impl BindGroupBuilder {
         visibility: ShaderStages,
         read_only: bool,
     ) -> &mut Self {
+        let index = self.buffers.len();
+        self.buffers.push(buffer);
         self.entries.push(BufferEntry::Static {
-            buffer,
+            buffer_index: index,
             visibility,
             read_only,
         });
@@ -242,8 +243,12 @@ impl BindGroupBuilder {
     }
 
     pub fn add_uniform(&mut self, buffer: Buffer, visibility: ShaderStages) -> &mut Self {
-        self.entries
-            .push(BufferEntry::Uniform { buffer, visibility });
+        let index = self.buffers.len();
+        self.buffers.push(buffer);
+        self.entries.push(BufferEntry::Uniform {
+            buffer_index: index,
+            visibility,
+        });
         self
     }
 
@@ -284,7 +289,9 @@ impl BindGroupBuilder {
                     });
                     binding_index += 1;
                 }
-                BufferEntry::Static { buffer, .. } | BufferEntry::Uniform { buffer, .. } => {
+                BufferEntry::Static { buffer_index, .. }
+                | BufferEntry::Uniform { buffer_index, .. } => {
+                    let buffer = &self.buffers[*buffer_index];
                     entries.push(BindGroupEntry {
                         binding: binding_index,
                         resource: buffer.as_entire_binding(),

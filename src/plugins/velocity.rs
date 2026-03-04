@@ -26,7 +26,7 @@ pub struct VelocityPlugin;
 
 impl Plugin for VelocityPlugin {
     fn build(&self, app: &mut App) {
-        let velocity_sync = VelocitySync::default();
+        let velocity_sync = VelocitySync::new();
         app.insert_resource(velocity_sync.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(velocity_sync);

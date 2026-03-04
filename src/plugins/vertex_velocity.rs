@@ -38,7 +38,7 @@ pub struct VertexVelocityReductionPassLabel;
 
 impl Plugin for VertexVelocityPlugin {
     fn build(&self, app: &mut App) {
-        let vertex_velocity_sync = VertexVelocitySync::default();
+        let vertex_velocity_sync = VertexVelocitySync::new();
         app.insert_resource(vertex_velocity_sync.clone());
         let render_app = app.sub_app_mut(RenderApp);
         render_app.insert_resource(vertex_velocity_sync);

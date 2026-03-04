@@ -15,7 +15,7 @@ use bevy::render::{
 };
 use bytemuck::{AnyBitPattern, NoUninit};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DoubleBuffer<T: Send + Sync> {
     buffers: [Buffer; 2],
     staging: Buffer,
